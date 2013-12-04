@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gurux.SMS_2008", "Gurux.SMS_2008.csproj", "{9E108E9B-AD69-46DC-A6B3-905F2B54002D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gurux.Common_2008", "..\..\..\Gurux.Common\Development\Gurux.Common_2008.csproj", "{749652D4-4779-4869-AD81-5211A661CD1B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9E108E9B-AD69-46DC-A6B3-905F2B54002D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E108E9B-AD69-46DC-A6B3-905F2B54002D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E108E9B-AD69-46DC-A6B3-905F2B54002D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E108E9B-AD69-46DC-A6B3-905F2B54002D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{749652D4-4779-4869-AD81-5211A661CD1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{749652D4-4779-4869-AD81-5211A661CD1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{749652D4-4779-4869-AD81-5211A661CD1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{749652D4-4779-4869-AD81-5211A661CD1B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
