@@ -55,7 +55,7 @@ namespace GXSMSSample
 			}
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
         }
 
@@ -95,7 +95,7 @@ namespace GXSMSSample
 			}
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
 		}
 		
@@ -117,7 +117,7 @@ namespace GXSMSSample
 			}
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
         }
 
@@ -132,11 +132,11 @@ namespace GXSMSSample
             try
             {
                 gxsms1.Close();
-                MessageBox.Show(ex.Message);
+                MessageBox.Show(this, ex.Message);
             }
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
         }
         #endregion //OnError
@@ -177,7 +177,7 @@ namespace GXSMSSample
 			}
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
         }
         #endregion //OnMediaStateChange
@@ -199,7 +199,7 @@ namespace GXSMSSample
 			}
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
         }
         #endregion //OnReceived
@@ -219,7 +219,7 @@ namespace GXSMSSample
             }
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
         }
 
@@ -279,7 +279,7 @@ namespace GXSMSSample
 			}
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
         }
 
@@ -296,10 +296,11 @@ namespace GXSMSSample
                 Gurux.SMS.GXSMSMessage msg = new Gurux.SMS.GXSMSMessage();                
 				msg.Data = SendText.Text;
 				gxsms1.Send(msg);
+                MessageBox.Show(this, "SMS sent.");
 			}
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                MessageBox.Show(this, Ex.Message);
             }
         }
         #endregion //Send
@@ -344,7 +345,7 @@ namespace GXSMSSample
 			}
 			catch(Exception Ex)
 			{
-				MessageBox.Show(Ex.Message);
+				MessageBox.Show(this, Ex.Message);
                 RSSITB.Text = "";
                 BERTB.Text = "";
                 BatteryCapacityTB.Text = "";
@@ -366,7 +367,7 @@ namespace GXSMSSample
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                MessageBox.Show(this, ex.Message);
             }
         }
 	}

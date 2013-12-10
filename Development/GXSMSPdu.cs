@@ -275,7 +275,6 @@ namespace Gurux.SMS
                     ch2 = str[pos + 1] & mask;
                 }
 			    ch2 = ch2 << (7 - (pos % 8));
-			    int ch = ch1 | ch2;		
                 output += CodeInteger(ch1 | ch2);
 		    }            
             return output;
@@ -297,6 +296,10 @@ namespace Gurux.SMS
 
         static string CodeUnicode(string data)
 	    {
+            if (string.IsNullOrEmpty(data))
+            {
+                return "";
+            }
             StringBuilder sb = new StringBuilder();
 		    foreach(int ch in data)
 		    {
@@ -377,6 +380,401 @@ namespace Gurux.SMS
 		    //If the TP-DCS field were set to 8-bit data or Unicode, the length would be the number of octets. 
             data += msg;
             return data;
+        }
+
+        ///Get integer as Word. bSwap is used to swap lo byte and hibyte when time is get.
+	    static int GetInteger(string data, int index)
+	    {
+            if (data.Length < 2)
+		    {
+                throw new ArgumentOutOfRangeException("Invalid data");
+		    }
+            int c = data[index];
+            int value = (byte)((c > '9' ? (c > 'Z' ? (c - 'a' + 10) : (c - 'A' + 10)) : (c - '0')) << 4);
+            c = data[index + 1];
+            value |= (byte)(c > '9' ? (c > 'Z' ? (c - 'a' + 10) : (c - 'A' + 10)) : (c - '0'));
+            return value;
+	    }
+
+        static string GetString(string data, int index, int length, bool swap)
+	    {
+            if (data.Length < 0)
+		    {
+                throw new ArgumentOutOfRangeException("Invalid data");
+		    }
+            if (swap)
+            {
+                char[] bytes = new char[length];
+                for (int pos = 0; pos < length; pos += 2)
+                {
+                    bytes[pos] = data[index + pos + 1];
+                    bytes[pos + 1] = data[index + pos];
+                }
+                return new string(bytes);
+            }
+            return data.Substring(index, length);
+	    }
+
+        //Convert SMS char to Unicode char.
+        static int SMStoASCII(int ch, ref bool escch)
+        {
+            if (escch)
+            {
+                ch = 0x1B <<8 | ch;
+            }
+            switch (ch)
+            {
+                case 0:
+                    ch = '@';
+                    break;
+                case 1:
+                    ch = 0xA3;
+                    break;
+                case 2:
+                    ch = '$';
+                    break;
+                case 3:
+                    ch = 165;
+                    break;
+                case 4:
+                    ch = 0xE8;
+                    break;
+                case 5:
+                    ch = 0xE9;
+                    break;
+                case 6:
+                    ch = 0xF9;
+                    break;
+                case 7:
+                    ch = 0xEC;
+                    break;
+                case 8:
+                    ch = 0xF2;
+                    break;
+                case 9:
+                    ch = 0xC7;
+                    break;
+                case 11:
+                    ch = 0xD8;
+                    break;
+                case 12:
+                    ch = 0xF8;
+                    break;
+                case 14:
+                    ch = 0xC5;
+                    break;
+                case 15:
+                    ch = 0xE5;
+                    break;
+                case 16:
+                    ch = 0x0394;
+                    break;
+                case 17:
+                    ch = '_';
+                    break;
+                case 18:
+                    ch = 0x03A6;
+                    break;
+                case 19:
+                    ch = 0x0393;
+                    break;
+                case 20:
+                    ch = 0x039B;
+                    break;
+                case 21:
+                    ch = 0x03A9;
+                    break;
+                case 22:
+                    ch = 0x03A0;
+                    break;
+                case 23:
+                    ch = 0x03A8;
+                    break;
+                case 24:
+                    ch = 0x03A3;
+                    break;
+                case 25:
+                    ch = 0x0398;
+                    break;
+                case 26:
+                    ch = 0x039E;
+                    break;
+                case 28:
+                    ch = 0xC6;
+                    break;
+                case 29:
+                    ch = 0xE6;
+                    break;
+                case 30:
+                    ch = 0xDF;
+                    break;
+                case 31:
+                    ch = 0xC9;
+                    break;
+                case 36:
+                    ch = 0xA4;
+                    break;
+                case 64:
+                    ch = 0xA1;
+                    break;
+                case 91:
+                    ch = 0xC4;
+                    break;
+                case 92:
+                    ch = 0xD6;
+                    break;
+                case 93:
+                    ch = 0xD1;
+                    break;
+                case 94:
+                    ch = 0xDC;
+                    break;
+                case 95: //Section sign.
+                    ch = 167;
+                    break;
+                case 96: //Inverted question mark.
+                    ch = 0x40;
+                    break;
+                case 123:
+                    ch = 0xE4;
+                    break;
+                case 124:
+                    ch = 0xF6;
+                    break;
+                case 125:
+                    ch = 0xF1;
+                    break;
+                case 126:
+                    ch = 0xFC;
+                    break;
+                case 127:
+                    ch = 0xE0;
+                    break;
+                case 0x1B0A: //FORM FEED
+                    ch = 12;
+                    break;
+                case 0x1B14: //CIRCUMFLEX ACCENT ^
+                    ch = 94;
+                    break;
+                case 0x1B28: //LEFT CURLY BRACKET {
+                    ch = 123;
+                    break;
+                case 0x1B29: //RIGHT CURLY BRACKET }
+                    ch = 125;
+                    break;
+                case 0x1B2F: //REVERSE SOLIDUS (BACKSLASH)
+                    ch = 92;
+                    break;
+                case 0x1B3C: //LEFT SQUARE BRACKET [
+                    ch = 91;
+                    break;
+                case 0x1B3D: //TILDE
+                    ch = 126;
+                    break;
+                case 0x1B3E: //RIGHT SQUARE BRACKET ]
+                    ch = 93;
+                    break;
+                case 0x1B40: //VERTICAL BAR | 
+                    ch = 124;
+                    break;
+                case 0x1B65: //EURO SIGN
+                    ch = 0x20AC;
+                    break;
+            }
+            escch = ch == 27;
+            if (escch)
+            {
+                return 0;
+            }
+            if ((ch & 0xFF00) == 0xFF00)
+            {
+                ch = ch & 0xFF;
+            }
+            return ch;
+        }
+
+        ///Convert 7 bits data to the 8 bits data.
+	    static string Decode7Bit(string data)
+	    {
+            int[] bytes = new int[data.Length / 2];
+		    //Convert data to the byte array.
+            for (int pos = 0; pos < bytes.Length; ++pos)
+            {
+                bytes[pos] = GetInteger(data, 2 * pos);
+            }
+		    //Get data at 7 bits at the time
+            int newData = 0;
+            int off = 0;
+            int ch = 0;
+            int mask = 1;
+            long chCnt = 0;
+            bool escch = false;
+            StringBuilder sb = new StringBuilder();
+            for (int pos = 0; pos < bytes.Length; ++pos)
+            {
+                newData = bytes[pos] << off;
+                for (long bitpos = 0; bitpos < 8; ++bitpos)
+                {
+                    if (mask == 0x80)
+                    {
+                        int newCh = SMStoASCII(ch, ref escch);
+                        if (newCh != 0)
+                        {
+                            sb.Append((char)newCh);
+                        }
+                        off = ch = 0;
+                        mask = 1;
+                        newData = newData >> 7;
+                        if (++chCnt == data.Length)
+                        {
+                            break;
+                        }
+                    }
+                    ch |= (newData & mask);
+                    mask = mask << 1;
+                    ++off;
+                }
+            }		   
+		    if (mask == 0x80)
+		    {
+                int newCh = SMStoASCII(ch, ref escch);
+			    if (newCh != 0)
+			    {
+                    sb.Append((char)newCh);
+			    }
+		    }
+		    return sb.ToString();
+	    }
+
+        /// <summary>
+        /// Convert hex string to string data.
+        /// </summary>
+        static string Decode8Bit(string data)
+	    {
+            StringBuilder sb = new StringBuilder();
+            for(int pos = 0; pos != data.Length; pos += 2)
+            {
+                sb.Append((char) GetInteger(data, pos));
+            }		    
+		    return sb.ToString();
+	    }
+
+        
+	    /// <summary>
+        /// Decode UNICODE data.
+	    /// </summary>
+        static string DecodeUnicode(string data)
+	    {
+            StringBuilder sb = new StringBuilder();
+            for (int pos = 0; pos != data.Length; pos += 4)
+            {
+                int value = GetInteger(data, pos) << 8;
+                value |= GetInteger(data, pos + 2);
+                sb.Append((char) value);
+            }
+            return sb.ToString();
+	    }
+
+        public static void Encode(string data, GXSMSMessage msg)
+        {
+            if (data.Length < 1)
+            {
+                throw new ArgumentOutOfRangeException("Invalid data.");
+            }            
+            int index = 0;
+            // Service Center Number length
+            int ServCenterlen = GetInteger(data, index);
+            index += 2;
+            //Type-of-address of the SMSC.
+            int SMSCType = GetInteger(data, index);
+            index += 2;
+            //Get Service Center number            
+            if (ServCenterlen > 0)
+            {
+                int sz = 2 * ServCenterlen - 1;
+                if (data.Length < index + sz)
+                {
+                    throw new ArgumentOutOfRangeException("Invalid data.");
+                }                
+                string serviceCenterNumber = data.Substring(index, sz);            
+                if (SMSCType == 0x91) //If international format.
+                {
+                    serviceCenterNumber = "+" + serviceCenterNumber;
+                }
+                msg.ServiceCenterNumber = serviceCenterNumber;
+                index += sz;
+            }
+            //First octet of the SMS-DELIVER PDU
+            int SMSDeliver = GetInteger(data, index);
+            index += 2;
+            //Length of the sender number
+            int SenderLen = GetInteger(data, index);
+            index += 2;
+            SenderLen += SenderLen % 2;
+            //Type-of-address of the sender number.
+            int SenderType = GetInteger(data, index);
+            index += 2;
+            //Get Sender number            
+            string phoneNumber = GetString(data, index, SenderLen, true); 
+            if (SenderType == 0x91) //If international format.
+            {
+                phoneNumber = "+" + phoneNumber;
+            }
+            msg.PhoneNumber = phoneNumber;
+            index += SenderLen;
+            //TP-PID. Protocol identifier.
+            int ProtocolID = GetInteger(data, index);
+            index += 2;
+            //TP-DCS Data coding scheme		
+            msg.CodeType = (MessageCodeType)GetInteger(data, index);
+            index += 2;
+            int year = GetInteger(data, index);
+            index += 2;
+            if (year != 0xAA)
+            {
+                year += 2000;                
+                int month = GetInteger(data, index);
+                index += 2;
+                int day = GetInteger(data, index);
+                index += 2;
+                int hour = GetInteger(data, index);
+                index += 2;
+                int minute = GetInteger(data, index);
+                index += 2;
+                int second = GetInteger(data, index);
+                index += 2;
+                int timezone = GetInteger(data, index);
+                index += 2;
+                //TODO: lisää time zone.
+                //DateTime dt = new DateTime(year, month, day, hour, minute, second);
+            }
+            //TP-UDL. User data length, length of message. 
+            // The TP-DCS field indicated 7-bit data, so the length here is the number of septets (10). 
+            // If the TP-DCS field were set to indicate 8-bit data or Unicode, the length would be the number of octets (9). 
+            int DataLen = GetInteger(data, index);
+            index += 2;
+            string buff = GetString(data, index, 2 * DataLen, false); //data.Substring(index, DataLen);
+            index += DataLen;
+            //TP-UD. Message 8-bit octets representing 7-bit data.
+            //When DataCodingScheme = 0, PDU code is coded from 7bit charactor (see GSM 03.38).
+            if (msg.CodeType == MessageCodeType.Bits7)
+            {
+                msg.Data = Decode7Bit(buff);
+            }
+            // When DataCodingScheme = 4, PDU code is coded using 8 bits codec...
+            else if (msg.CodeType == MessageCodeType.Bits8)
+            {
+                msg.Data = Decode8Bit(buff);
+            }
+            // When DataCodingScheme = 8, PDU code is coded from Unicode charactor (see GSM 03.38).
+            else if (msg.CodeType == MessageCodeType.Unicode)
+            {
+                msg.Data = DecodeUnicode(buff);
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException("Invalid data coding scheme");
+            }            
         }
     }
 }

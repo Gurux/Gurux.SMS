@@ -49,10 +49,10 @@ namespace Gurux.SMS
 	    /// <summary>
         /// 8 Bits data is used. 
 	    /// </summary>
-	    Bits8 = 1, 
+	    Bits8 = 4, 
 	    /// <summary>
         ///  Unicode is used. Note Max 80 charachters.
 	    /// </summary>
-	    Unicode = 2
+	    Unicode = 8
     }
 }

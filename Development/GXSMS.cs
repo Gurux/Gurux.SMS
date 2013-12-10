@@ -75,7 +75,7 @@ namespace Gurux.SMS
         Thread m_SMSReceiverThread;
 
 		/// <summary>
-		/// Get baud rates supported by given SMS port.
+		/// Get baud rates supported by given serial port.
 		/// </summary>
         static public int[] GetAvailableBaudRates(string portName)
         {
@@ -1168,6 +1168,13 @@ namespace Gurux.SMS
                                 }
                             }
                         }      
+                        //Set PDU mode.
+                        reply = SendCommand("AT+CMGF=0\r", false);
+                        if (reply != "OK")
+                        {
+                            throw new Exception("Modem is not supporting PDU.");
+                        }
+
                         //Enable error reporting. It's OK if this fails.
                         reply = SendCommand("AT+CMEE\r", false);
                         //Enable verbode error code,
@@ -1314,8 +1321,13 @@ namespace Gurux.SMS
             Gurux.Common.ReceiveParameters<string> p = new Gurux.Common.ReceiveParameters<string>()
             {                
                 WaitTime = m_ConnectionWaitTime,
-                Eop = eop != null ? eop : "\r\n"
+                Eop = eop == null ? "\r\n" : eop
             };
+            if (p.Eop.Equals(""))
+            {
+                p.Eop = null;
+                p.Count = cmd.Length;
+            }
             SendBytes(ASCIIEncoding.ASCII.GetBytes(cmd));
             StringBuilder sb = new StringBuilder();
             int index = -1;
@@ -1337,7 +1349,12 @@ namespace Gurux.SMS
                 {
                     sb.Remove(0, cmd.Length);
                     reply = sb.ToString();
-                }
+                    //Remove echo and return if we are not expecting reply.
+                    if (eop == "")
+                    {
+                        return "";
+                    }
+                }                
                 if (eop != null)
                 {
                     index = reply.LastIndexOf(eop);
@@ -1689,6 +1706,14 @@ namespace Gurux.SMS
                 {
                     tmp += "<PIN>" + PIN + "</PIN>";
                 }
+                if (!string.IsNullOrEmpty(PhoneNumber))
+                {
+                    tmp += "<Number>" + PhoneNumber + "</Number>";
+                }
+                if (this.SMSCheckInterval != 0)
+                {
+                    tmp += "<Interval>" + SMSCheckInterval + "</Interval>";
+                }
                 if (!string.IsNullOrEmpty(PortName))
                 {
                     tmp += "<Port>" + PortName + "</Port>";
@@ -1737,6 +1762,12 @@ namespace Gurux.SMS
                                     case "PIN":
                                         PIN = xmlReader.ReadString();
                                         break;
+                                    case "Number":
+                                        PhoneNumber = xmlReader.ReadString();
+                                        break;
+                                    case "Interval":
+                                        SMSCheckInterval = Convert.ToInt32(xmlReader.ReadString());
+                                        break;
                                     case "Port":
                                         PortName = xmlReader.ReadString();
                                         break;
@@ -1781,7 +1812,7 @@ namespace Gurux.SMS
         {
             get
             {
-                return "Terminal";
+                return "SMS";
             }
         }
 
@@ -1857,16 +1888,12 @@ namespace Gurux.SMS
             }
             //Remove spaces.
             receiver = receiver.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", "").Trim();
-            if (string.IsNullOrEmpty(receiver))
-            {
-                throw new ArgumentException("Invalid receiver");
-            }
             //Send EOF
             SendBytes(new byte[] { 26 });
             //Code PDU.
             string data = GXSMSPdu.Code(receiver, message, type);
             long len = (data.Length / 2) - 1;
-            string cmd;                
+            string cmd;            
             if (!SupportDirectSend)//Save SMS before send.
             {                    
                 cmd = string.Format("AT+CMGW={0}\r", len);
@@ -1880,7 +1907,7 @@ namespace Gurux.SMS
             {
                 throw new Exception("Short message send failed.");
             }
-            SendBytes(ASCIIEncoding.ASCII.GetBytes(data));
+            reply = SendCommand(data, "", false);            
             //Send EOF
             reply = SendCommand(ASCIIEncoding.ASCII.GetString(new byte[] { 26 }), false);
             if (!reply.StartsWith("+CMGW:"))
@@ -2161,8 +2188,12 @@ namespace Gurux.SMS
                         //If this is not a empty message
                         if (tmp.Length != 1)
                         {
-                            msg.PhoneNumber = tmp[1].Replace("\"", "").Trim();
-                            msg.Data = tmp[2].TrimStart();
+                            string[] m = tmp[2].Split(new string[]{"\r\n"}, StringSplitOptions.None);
+                            if (m.Length != 2)
+                            {
+                                continue;
+                            }
+                            GXSMSPdu.Encode(m[1], msg);
                             //If this message is not read yet.
                             if (msg.Status == MessageStatus.Unread && msg.PhoneNumber == "")
                             {
@@ -2170,6 +2201,11 @@ namespace Gurux.SMS
                             }
                         }
                         messages.Add(msg);
+                        //If all messages are read.
+                        if (messages.Count == count)
+                        {
+                            break;
+                        }
                     }
                 }
             }
