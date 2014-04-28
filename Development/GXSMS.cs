@@ -1122,6 +1122,7 @@ namespace Gurux.SMS
 				lock(m_baseLock)
 				{
                 	m_base.Open();
+                    m_base.WriteTimeout = m_ConnectionWaitTime;
                     m_base.DiscardOutBuffer();
                     m_base.DiscardInBuffer();
 				}
@@ -1326,7 +1327,7 @@ namespace Gurux.SMS
             if (p.Eop.Equals(""))
             {
                 p.Eop = null;
-                p.Count = cmd.Length;
+                p.Count = cmd.Length;                
             }
             SendBytes(ASCIIEncoding.ASCII.GetBytes(cmd));
             StringBuilder sb = new StringBuilder();
@@ -1527,7 +1528,6 @@ namespace Gurux.SMS
             }
         }
 
-
         /// <inheritdoc cref="IGXMedia.Synchronous"/>
         public object Synchronous
         {
@@ -1679,7 +1679,7 @@ namespace Gurux.SMS
                 bool change = m_Eop != value;
                 m_Eop = value;
                 if (change)
-                {
+                {                    
                     NotifyPropertyChanged("Eop");
                 }
             }
@@ -1973,7 +1973,7 @@ namespace Gurux.SMS
             set;
         }
 
-        void OnAsyncStateChange(GXAsyncWork work, System.Windows.Forms.Control sender, object[] parameters, AsyncState state, string text)
+        void OnAsyncStateChange(object sender, GXAsyncWork work, object[] parameters, AsyncState state, string text)
         {
             try
             {
@@ -1990,11 +1990,12 @@ namespace Gurux.SMS
             }
         }
 
-        object TestAsync(object sender, object[] parameters)
+        void TestAsync(object sender, GXAsyncWork work, object[] parameters)
         {
             lock (m_baseLock)
             {
-                m_base.Open();                
+                m_base.Open();
+                m_base.WriteTimeout = m_ConnectionWaitTime;
                 m_base.DtrEnable = m_base.RtsEnable = true; 
             }
             try
@@ -2004,19 +2005,19 @@ namespace Gurux.SMS
                 {
                     if (string.Compare(SendCommand("AT\r", false), "OK", false) == 0)
                     {
-                        return true;
+                        work.Result = true;
+                        return;
                     }
                 }
             }
             //If connection is closed by user.
             catch (System.IO.IOException)
             {
-                return false;
+                work.Result = false;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex.Message);
-                return false;                
             }
             finally
             {
@@ -2028,7 +2029,7 @@ namespace Gurux.SMS
                     }
                 }
             }
-            return false;
+            work.Result = false;
         }
        
         /// <summary>
@@ -2042,10 +2043,11 @@ namespace Gurux.SMS
                 GXSMSAsyncWorkForm dlg2 = new GXSMSAsyncWorkForm();
                 GXSMSAsyncWorkForm dlg = new GXSMSAsyncWorkForm();
                 dlg.Text = dlg.ConnectingLbl.Text = "Checking modem.";              
-                GXAsyncWork work = new GXAsyncWork(parent, OnAsyncStateChange,
-                    TestAsync, "Checking is modem available.", null, dlg);
+                GXAsyncWork work = new GXAsyncWork(dlg, OnAsyncStateChange,
+                    TestAsync, null, "Checking is modem available.", null);
                 work.Start();
                 work.Wait(m_ConnectionWaitTime);
+                //If we try to check from the COM port where is no modem thread is locked.               
                 if (work.Result == null)
                 {
                     return false;
