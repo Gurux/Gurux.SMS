@@ -106,6 +106,7 @@ namespace GXSMSSample
 		[System.Diagnostics.DebuggerStepThrough()]private void InitializeComponent()
 		{
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.Frame3 = new System.Windows.Forms.GroupBox();
             this.ReceivedTB = new System.Windows.Forms.TextBox();
             this.SentTB = new System.Windows.Forms.TextBox();
@@ -131,9 +132,9 @@ namespace GXSMSSample
             this.ReadBtn = new System.Windows.Forms.Button();
             this.Frame1 = new System.Windows.Forms.GroupBox();
             this.MsgList = new System.Windows.Forms.ListView();
-            this._MsgList_ColumnHeader_1 = new System.Windows.Forms.ColumnHeader();
-            this._MsgList_ColumnHeader_2 = new System.Windows.Forms.ColumnHeader();
-            this._MsgList_ColumnHeader_3 = new System.Windows.Forms.ColumnHeader();
+            this._MsgList_ColumnHeader_1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this._MsgList_ColumnHeader_2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this._MsgList_ColumnHeader_3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.SendText = new System.Windows.Forms.TextBox();
             this._Label1_1 = new System.Windows.Forms.Label();
             this._Label1_0 = new System.Windows.Forms.Label();
@@ -617,13 +618,14 @@ namespace GXSMSSample
             this.Controls.Add(this.SendBtn);
             this.Controls.Add(this.PropertiesBtn);
             this.Cursor = System.Windows.Forms.Cursors.Default;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Location = new System.Drawing.Point(270, 221);
             this.Name = "Form1";
             this.RightToLeft = System.Windows.Forms.RightToLeft.No;
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Text = "GXSMS Sample";
-            this.Load += new System.EventHandler(this.Form1_Load);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
+            this.Load += new System.EventHandler(this.Form1_Load);
             this.Frame3.ResumeLayout(false);
             this.Frame3.PerformLayout();
             this.Frame2.ResumeLayout(false);

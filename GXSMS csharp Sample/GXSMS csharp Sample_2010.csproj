@@ -91,6 +91,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="SMS.ico" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
@@ -160,6 +161,9 @@
     </PreBuildEvent>
     <PostBuildEvent>
     </PostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>SMS.ico</ApplicationIcon>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)/Microsoft.CSharp.targets" />
 </Project>

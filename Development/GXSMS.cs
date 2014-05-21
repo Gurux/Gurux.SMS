@@ -51,7 +51,7 @@ namespace Gurux.SMS
 	/// <summary>
 	/// A media component that enables sending short messages (SMS).
 	/// </summary>
-    public class GXSMS : Gurux.Common.IGXMedia, INotifyPropertyChanged, IDisposable
+    public class GXSMS : IGXMedia, INotifyPropertyChanged, IDisposable
     {
         internal AutoResetEvent m_SMSReceived = new AutoResetEvent(false);
         internal GXSMSMessage SyncMessage;
@@ -224,7 +224,7 @@ namespace Gurux.SMS
             }
             if (m_Trace >= TraceLevel.Error && m_OnTrace != null)
             {
-                m_OnTrace(this, new TraceEventArgs(TraceTypes.Error, ex));
+                m_OnTrace(this, new TraceEventArgs(TraceTypes.Error, ex, null));
             }
         }
 
@@ -232,7 +232,7 @@ namespace Gurux.SMS
         {
             if (m_Trace >= TraceLevel.Info && m_OnTrace != null)
             {
-                m_OnTrace(this, new TraceEventArgs(TraceTypes.Info, state));
+                m_OnTrace(this, new TraceEventArgs(TraceTypes.Info, state, null));
             }
             if (m_OnMediaStateChange != null)
             {
@@ -1116,8 +1116,8 @@ namespace Gurux.SMS
                         eop = Eop.ToString();
                     }
                     m_OnTrace(this, new TraceEventArgs(TraceTypes.Info, "Settings: Port: " + this.PortName + 
-                                " Baud Rate: " + BaudRate + " Data Bits: " + DataBits.ToString() + " Parity: " 
-                                + Parity.ToString() + " Stop Bits: " + StopBits.ToString() + " Eop:" + eop));
+                                " Baud Rate: " + BaudRate + " Data Bits: " + DataBits.ToString() + " Parity: "
+                                + Parity.ToString() + " Stop Bits: " + StopBits.ToString() + " Eop:" + eop, null));
                 }
 				lock(m_baseLock)
 				{
@@ -1300,7 +1300,7 @@ namespace Gurux.SMS
             {
                 if (m_Trace == TraceLevel.Verbose && m_OnTrace != null)
                 {
-                    m_OnTrace(this, new TraceEventArgs(TraceTypes.Sent, value));
+                    m_OnTrace(this, new TraceEventArgs(TraceTypes.Sent, value, null));
                 }
                 m_BytesSent += (uint)value.Length;
                 //Reset last position if Eop is used.
@@ -1526,6 +1526,20 @@ namespace Gurux.SMS
             {
                 ((IGXMedia)this).ConfigurableSettings = (int)value;
             }
+        }
+
+        /// <inheritdoc cref="IGXMedia.Tag"/>
+        public object Tag
+        {
+            get;
+            set;
+        }
+
+        /// <inheritdoc cref="IGXMedia.MediaContainer"/>
+        IGXMediaContainer IGXMedia.MediaContainer
+        {
+            get;
+            set;
         }
 
         /// <inheritdoc cref="IGXMedia.Synchronous"/>
@@ -1932,7 +1946,7 @@ namespace Gurux.SMS
                 {
                     if (m_Trace == TraceLevel.Verbose && m_OnTrace != null)
                     {
-                        m_OnTrace(this, new TraceEventArgs(TraceTypes.Sent, msg.PhoneNumber + " : " + msg.Data));
+                        m_OnTrace(this, new TraceEventArgs(TraceTypes.Sent, msg.PhoneNumber + " : " + msg.Data, null));
                     }
                     //Reset last position if Eop is used.
                     lock (m_syncBase.m_ReceivedSync)
