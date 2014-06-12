@@ -53,6 +53,7 @@ namespace Gurux.SMS
 	/// </summary>
     public class GXSMS : IGXMedia, INotifyPropertyChanged, IDisposable
     {
+        private object m_sync = new object();
         internal AutoResetEvent m_SMSReceived = new AutoResetEvent(false);
         internal GXSMSMessage SyncMessage;
         int m_SMSCheckInterval;
@@ -1540,6 +1541,22 @@ namespace Gurux.SMS
         {
             get;
             set;
+        }
+
+        /// <inheritdoc cref="IGXMedia.SyncRoot"/>
+        [Browsable(false), ReadOnly(true)]
+        public object SyncRoot
+        {
+            get
+            {
+                //In some special cases when binary serialization is used this might be null
+                //after deserialize. Just set it.
+                if (m_sync == null)
+                {
+                    m_sync = new object();
+                }
+                return m_sync;
+            }
         }
 
         /// <inheritdoc cref="IGXMedia.Synchronous"/>
