@@ -278,10 +278,10 @@ namespace Gurux.SMS
             {
                 int count = 0, index = 0;
                 byte[] buff = null;
-                lock (m_syncBase.m_ReceivedSync)
+                lock (m_syncBase.receivedSync)
                 {
                     int totalCount = 0;
-                    index = m_syncBase.m_ReceivedSize;
+                    index = m_syncBase.receivedSize;
                     while (m_base.IsOpen && (count = m_base.BytesToRead) != 0)
                     {
                         totalCount += count;
@@ -296,7 +296,7 @@ namespace Gurux.SMS
                         {
                             foreach (object eop in (Array)Eop)
                             {
-                                totalCount = GXCommon.IndexOf(m_syncBase.m_Received, GXCommon.GetAsByteArray(eop), index, m_syncBase.m_ReceivedSize);
+                                totalCount = GXCommon.IndexOf(m_syncBase.m_Received, GXCommon.GetAsByteArray(eop), index, m_syncBase.receivedSize);
                                 if (totalCount != -1)
                                 {
                                     break;
@@ -305,10 +305,10 @@ namespace Gurux.SMS
                         }
                         else
                         {
-                            totalCount = GXCommon.IndexOf(m_syncBase.m_Received, GXCommon.GetAsByteArray(Eop), index, m_syncBase.m_ReceivedSize);
+                            totalCount = GXCommon.IndexOf(m_syncBase.m_Received, GXCommon.GetAsByteArray(Eop), index, m_syncBase.receivedSize);
                         }
                     }                    
-                    m_syncBase.m_ReceivedEvent.Set();
+                    m_syncBase.receivedEvent.Set();
                 }               
             }
             catch (Exception ex)
@@ -316,7 +316,7 @@ namespace Gurux.SMS
                 if (this.IsSynchronous)
                 {
                     m_syncBase.Exception = ex;
-                    m_syncBase.m_ReceivedEvent.Set();
+                    m_syncBase.receivedEvent.Set();
                 }
                 else
                 {
@@ -1100,9 +1100,9 @@ namespace Gurux.SMS
             Close();
             try
             {
-                lock (m_syncBase.m_ReceivedSync)
+                lock (m_syncBase.receivedSync)
                 {
-                    m_syncBase.m_LastPosition = 0;
+                    m_syncBase.lastPosition = 0;
                 }
                 NotifyMediaStateChange(MediaState.Opening);
                 if (m_Trace >= TraceLevel.Info && m_OnTrace != null)
@@ -1305,9 +1305,9 @@ namespace Gurux.SMS
                 }
                 m_BytesSent += (uint)value.Length;
                 //Reset last position if Eop is used.
-                lock (m_syncBase.m_ReceivedSync)
+                lock (m_syncBase.receivedSync)
                 {
-                    m_syncBase.m_LastPosition = 0;
+                    m_syncBase.lastPosition = 0;
                 }
                 m_base.Write(value, 0, value.Length);                                
             }
@@ -1585,9 +1585,9 @@ namespace Gurux.SMS
         /// <inheritdoc cref="IGXMedia.ResetSynchronousBuffer"/>
         public void ResetSynchronousBuffer()
         {
-            lock (m_syncBase.m_ReceivedSync)
+            lock (m_syncBase.receivedSync)
             {
-                m_syncBase.m_ReceivedSize = 0;
+                m_syncBase.receivedSize = 0;
             }
         }
 
@@ -1966,9 +1966,9 @@ namespace Gurux.SMS
                         m_OnTrace(this, new TraceEventArgs(TraceTypes.Sent, msg.PhoneNumber + " : " + msg.Data, null));
                     }
                     //Reset last position if Eop is used.
-                    lock (m_syncBase.m_ReceivedSync)
+                    lock (m_syncBase.receivedSync)
                     {
-                        m_syncBase.m_LastPosition = 0;
+                        m_syncBase.lastPosition = 0;
                     }
                     //Use default phone number if new is not set.
                     string number = m_PhoneNumber;                    

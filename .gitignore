@@ -21,6 +21,11 @@ Nuget/
 
 # External tool builders
 .externalToolBuilders/
+packages/
+nuget/
+Gurux.Common.XML
+GXSMSSample.XML
+
 
 # Locally stored "Eclipse launch configurations"
 *.launch
