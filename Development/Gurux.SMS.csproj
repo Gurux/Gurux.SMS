@@ -41,12 +41,9 @@
     <ApplicationIcon>SMS.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Gurux.Common, Version=7.0.2.1, Culture=neutral, PublicKeyToken=00bee6c3930228bf, processorArchitecture=MSIL">
-      <HintPath>packages\Gurux.Common.7.0.34.1\lib\net35\Gurux.Common.dll</HintPath>
+    <Reference Include="Gurux.Common, Version=8.0.8.4, Culture=neutral, PublicKeyToken=00bee6c3930228bf, processorArchitecture=MSIL">
+      <HintPath>packages\Gurux.Common.8.0.8.4\lib\net35\Gurux.Common.dll</HintPath>
       <Private>True</Private>
-    </Reference>
-    <Reference Include="ICSharpCode.SharpZipLib">
-      <HintPath>packages\ICSharpCode.SharpZipLib.dll.0.85.4.369\lib\net20\ICSharpCode.SharpZipLib.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -126,6 +123,7 @@
     <None Include="Resources\gxsms.bmp" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Gurux.Common.XML" />
     <Content Include="SMS.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
