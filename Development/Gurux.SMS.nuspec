@@ -14,15 +14,16 @@
 
 Our media components also support the following connection types: network, terminal and Serial Port RS-232, RS-485.</description>
         <summary>Using Gurux SMS media component you can send Short messages using your mobile phone.</summary>
-        <copyright>Copyright (c) 1998-2015 Gurux Ltd. All rights reserved.</copyright>
+        <copyright>Copyright (c) 1998-2016 Gurux Ltd. All rights reserved.</copyright>
         <language>en-US</language>
         <tags>Gurux Device Framework SMS</tags>
         <dependencies>
-            <dependency id="Gurux.Common" version="7.0.27.1" />
+            <dependency id="Gurux.Common" version="8.0" />
         </dependencies>
     </metadata>
     <files>
-        <file src="bin\Release\**" target="lib\portable-win+net35" />
-        <file src="**\*.cs" exclude="**\obj\**\*.*" target="src" />
+        <file src="bin\Release\Gurux.SMS.dll" target="lib\portable-win+net35" />
+        <file src="bin\Release\Gurux.SMS.XML" target="lib\portable-win+net35" />
+        <file src="bin\Release\Gurux.SMS.pdb" target="lib\portable-win+net35" />
     </files>
 </package>
