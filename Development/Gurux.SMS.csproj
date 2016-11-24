@@ -13,7 +13,8 @@
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>Gurux.SMS.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
     <UpgradeBackupLocation>
@@ -42,8 +43,8 @@
     <ApplicationIcon>SMS.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Gurux.Common, Version=8.0.16327.17, Culture=neutral, PublicKeyToken=00bee6c3930228bf, processorArchitecture=MSIL">
-      <HintPath>packages\Gurux.Common.8.0.16327.17\lib\portable-win+net35\Gurux.Common.dll</HintPath>
+    <Reference Include="Gurux.Common, Version=8.0.16329.9, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Gurux.Common.8.0.16329.09\lib\portable-win+net35\Gurux.Common.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -97,9 +98,6 @@
       <DependentUpon>PropertiesForm.cs</DependentUpon>
     </Compile>
     <Compile Include="SMSReceiveThread.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Gurux.SMS.snk" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="GXSMSAsyncWorkForm.resx">
