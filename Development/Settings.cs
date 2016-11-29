@@ -1,7 +1,7 @@
 //
 // --------------------------------------------------------------------------
 //  Gurux Ltd
-// 
+//
 //
 //
 // Filename:        $HeadURL$
@@ -19,14 +19,14 @@
 // This file is a part of Gurux Device Framework.
 //
 // Gurux Device Framework is Open Source software; you can redistribute it
-// and/or modify it under the terms of the GNU General Public License 
+// and/or modify it under the terms of the GNU General Public License
 // as published by the Free Software Foundation; version 2 of the License.
 // Gurux Device Framework is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of 
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// This code is licensed under the GNU General Public License v2. 
+// This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 
@@ -42,15 +42,39 @@ using Gurux.Common;
 
 namespace Gurux.SMS
 {
-	/// <summary>
-	/// Settings dialog.
-	/// </summary>
-    partial class Settings : Form, Gurux.Common.IGXPropertyPage
+    /// <summary>
+    /// Settings dialog.
+    /// </summary>
+    partial class Settings : Form, IGXPropertyPage, INotifyPropertyChanged
     {
         GXSMS Target;
-		/// <summary>
-		/// Constructor.
-		/// </summary>
+
+        PropertyChangedEventHandler propertyChanged;
+
+        public bool Dirty
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Occurs when a property value changes.
+        /// </summary>
+        public event PropertyChangedEventHandler PropertyChanged
+        {
+            add
+            {
+                propertyChanged += value;
+            }
+            remove
+            {
+                propertyChanged -= value;
+            }
+        }
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public Settings(GXSMS target)
         {
             InitializeComponent();
@@ -90,15 +114,16 @@ namespace Gurux.SMS
         #region IGXPropertyPage Members
 
         void IGXPropertyPage.Apply()
-        {            
+        {
             Target.PIN = this.PinTB.Text;
             Target.PortName = this.PortNameCB.Text;
             Target.BaudRate = Convert.ToInt32(this.BaudRateCB.Text);
             Target.DataBits = Convert.ToInt32(this.DataBitsCB.Text);
             Target.Parity = (System.IO.Ports.Parity)this.ParityCB.SelectedItem;
-            Target.StopBits = (System.IO.Ports.StopBits)this.StopBitsCB.SelectedItem;            
+            Target.StopBits = (System.IO.Ports.StopBits)this.StopBitsCB.SelectedItem;
             Target.SMSCheckInterval = int.Parse(this.IntervalTX.Text);
             Target.PhoneNumber = this.NumberTB.Text;
+            Dirty = false;
         }
 
         void IGXPropertyPage.Initialize()
@@ -121,22 +146,22 @@ namespace Gurux.SMS
             PortNamePanel.Enabled = (Target.ConfigurableSettings & AvailableMediaSettings.PortName) != 0;
             if (PortNamePanel.Enabled)
             {
-				if (Target.AvailablePorts != null)
-				{
-					PortNameCB.Items.AddRange(Target.AvailablePorts);
-				}
-				else
-				{
-					PortNameCB.Items.AddRange(GXSMS.GetPortNames());
-				}
-				if (this.PortNameCB.Items.Contains(Target.PortName))
-				{
-					this.PortNameCB.SelectedItem = Target.PortName;
-				}
-				else
-				{
-					this.PortNameCB.SelectedIndex = 0;
-				}
+                if (Target.AvailablePorts != null)
+                {
+                    PortNameCB.Items.AddRange(Target.AvailablePorts);
+                }
+                else
+                {
+                    PortNameCB.Items.AddRange(GXSMS.GetPortNames());
+                }
+                if (this.PortNameCB.Items.Contains(Target.PortName))
+                {
+                    this.PortNameCB.SelectedItem = Target.PortName;
+                }
+                else
+                {
+                    this.PortNameCB.SelectedIndex = 0;
+                }
             }
             BaudRatePanel.Enabled = (Target.ConfigurableSettings & AvailableMediaSettings.BaudRate) != 0;
             if (BaudRatePanel.Enabled)
@@ -172,15 +197,16 @@ namespace Gurux.SMS
                 this.StopBitsCB.Items.Add(System.IO.Ports.StopBits.Two);
                 this.StopBitsCB.SelectedItem = Target.StopBits;
             }
-        }       
+            Dirty = false;
+        }
 
-        #endregion                
+        #endregion
 
         private void TestBtn_Click(object sender, EventArgs e)
         {
             try
             {
-                GXSMS sms = new GXSMS();              
+                GXSMS sms = new GXSMS();
                 sms.PortName = this.PortNameCB.Text;
                 sms.BaudRate = Convert.ToInt32(this.BaudRateCB.Text);
                 sms.DataBits = Convert.ToInt32(this.DataBitsCB.Text);
@@ -194,11 +220,83 @@ namespace Gurux.SMS
                 {
                     MessageBox.Show(this, "Modem not found.");
                 }
-                this.Activate();                
+                this.Activate();
             }
             catch (Exception ex)
             {
                 MessageBox.Show(this, ex.Message);
+            }
+        }
+
+        private void NumberTB_TextChanged(object sender, EventArgs e)
+        {
+            Dirty = true;
+            if (propertyChanged != null)
+            {
+                propertyChanged(this, new PropertyChangedEventArgs("PortName"));
+            }
+        }
+
+        private void PinTB_TextChanged(object sender, EventArgs e)
+        {
+            Dirty = true;
+            if (propertyChanged != null)
+            {
+                propertyChanged(this, new PropertyChangedEventArgs("PortName"));
+            }
+        }
+
+        private void IntervalTX_TextChanged(object sender, EventArgs e)
+        {
+            Dirty = true;
+            if (propertyChanged != null)
+            {
+                propertyChanged(this, new PropertyChangedEventArgs("PortName"));
+            }
+        }
+
+        private void PortNameCB_SelectedIndexChanged_1(object sender, EventArgs e)
+        {
+            Dirty = true;
+            if (propertyChanged != null)
+            {
+                propertyChanged(this, new PropertyChangedEventArgs("PortName"));
+            }
+        }
+
+        private void BaudRateCB_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Dirty = true;
+            if (propertyChanged != null)
+            {
+                propertyChanged(this, new PropertyChangedEventArgs("PortName"));
+            }
+        }
+
+        private void DataBitsCB_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Dirty = true;
+            if (propertyChanged != null)
+            {
+                propertyChanged(this, new PropertyChangedEventArgs("PortName"));
+            }
+        }
+
+        private void ParityCB_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Dirty = true;
+            if (propertyChanged != null)
+            {
+                propertyChanged(this, new PropertyChangedEventArgs("PortName"));
+            }
+        }
+
+        private void StopBitsCB_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Dirty = true;
+            if (propertyChanged != null)
+            {
+                propertyChanged(this, new PropertyChangedEventArgs("PortName"));
             }
         }
     }
