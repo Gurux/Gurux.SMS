@@ -70,11 +70,9 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Gurux.Common">
-      <HintPath>packages\Gurux.Common.7.0.32.1\lib\net35\Gurux.Common.dll</HintPath>
-    </Reference>
-    <Reference Include="ICSharpCode.SharpZipLib">
-      <HintPath>packages\ICSharpCode.SharpZipLib.dll.0.85.4.369\lib\net20\ICSharpCode.SharpZipLib.dll</HintPath>
+    <Reference Include="Gurux.Common, Version=8.1.1702.602, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Gurux.Common.8.1.1702.0602\lib\portable-win+net35\Gurux.Common.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System">
       <Name>System</Name>
@@ -97,7 +95,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Gurux.Common.XML" />
     <Content Include="SMS.ico" />
   </ItemGroup>
   <ItemGroup>
@@ -147,18 +144,20 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Development\Gurux.SMS.csproj">
-      <Project>{9E108E9B-AD69-46DC-A6B3-905F2B54002D}</Project>
-      <Name>Gurux.SMS_2008</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="app.config" />
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Development\Gurux.SMS.csproj">
+      <Project>{9e108e9b-ad69-46dc-a6b3-905f2b54002d}</Project>
+      <Name>Gurux.SMS</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <PreBuildEvent>

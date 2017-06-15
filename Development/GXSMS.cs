@@ -47,10 +47,10 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 
 namespace Gurux.SMS
-{   
-	/// <summary>
-	/// A media component that enables sending short messages (SMS).
-	/// </summary>
+{
+    /// <summary>
+    /// A media component that enables sending short messages (SMS).
+    /// </summary>
     public class GXSMS : IGXMedia, INotifyPropertyChanged, IDisposable
     {
         private object m_sync = new object();
@@ -60,24 +60,24 @@ namespace Gurux.SMS
         string m_PhoneNumber;
         GXSMSAsyncWorkForm ConnectingForm;
         bool SupportDirectSend;
-        int m_ConnectionWaitTime = 3000;                
+        int m_ConnectionWaitTime = 3000;
         string m_PIN;
         TraceLevel m_Trace;
         static Dictionary<string, List<int>> BaudRates = new Dictionary<string, List<int>>();
         object m_Eop;
         GXSynchronousMediaBase m_syncBase;
         UInt64 m_BytesSent, m_BytesReceived;
-        readonly object m_Synchronous = new object();        
-		readonly object m_baseLock = new object();
+        readonly object m_Synchronous = new object();
+        readonly object m_baseLock = new object();
         internal System.IO.Ports.SerialPort m_base = new System.IO.Ports.SerialPort();
         ReceiveThread m_Receiver;
         SMSReceiveThread m_SMSReceiver;
         Thread m_ReceiverThread;
         Thread m_SMSReceiverThread;
 
-		/// <summary>
-		/// Get baud rates supported by given serial port.
-		/// </summary>
+        /// <summary>
+        /// Get baud rates supported by given serial port.
+        /// </summary>
         static public int[] GetAvailableBaudRates(string portName)
         {
             if (BaudRates.ContainsKey(portName.ToLower()))
@@ -86,7 +86,7 @@ namespace Gurux.SMS
             }
             if (string.IsNullOrEmpty(portName))
             {
-                portName = GXSMS.GetPortNames()[0];                 
+                portName = GXSMS.GetPortNames()[0];
             }
             List<int> items = new List<int>();
             BaudRates[portName.ToLower()] = items;
@@ -97,100 +97,100 @@ namespace Gurux.SMS
                 {
                     port.Open();
                     FieldInfo fi = port.BaseStream.GetType().GetField("commProp", BindingFlags.Instance | BindingFlags.NonPublic);
-					if (fi != null)
-					{
-						object p = fi.GetValue(port.BaseStream);
-                    	value = (Int32)p.GetType().GetField("dwSettableBaud", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).GetValue(p);
-					}
+                    if (fi != null)
+                    {
+                        object p = fi.GetValue(port.BaseStream);
+                        value = (Int32)p.GetType().GetField("dwSettableBaud", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).GetValue(p);
+                    }
                 }
-				if (value != 0)
-				{
-	                if ((value & 0x1) != 0)
-	                {
-	                    items.Add(75);
-	                }
-	                if ((value & 0x2) != 0)
-	                {
-	                    items.Add(110);
-	                }
-	                if ((value & 0x8) != 0)
-	                {
-	                    items.Add(150);
-	                }
-	                if ((value & 0x10) != 0)
-	                {
-	                    items.Add(300);
-	                }
-	                if ((value & 0x20) != 0)
-	                {
-	                    items.Add(600);
-	                }
-	                if ((value & 0x40) != 0)
-	                {
-	                    items.Add(1200);
-	                }
-	                if ((value & 0x80) != 0)
-	                {
-	                    items.Add(1800);
-	                }
-	                if ((value & 0x100) != 0)
-	                {
-	                    items.Add(2400);
-	                }
-	                if ((value & 0x200) != 0)
-	                {
-	                    items.Add(4800);
-	                }
-	                if ((value & 0x400) != 0)
-	                {
-	                    items.Add(7200);
-	                }
-	                if ((value & 0x800) != 0)
-	                {
-	                    items.Add(9600);
-	                }
-	                if ((value & 0x1000) != 0)
-	                {
-	                    items.Add(14400);
-	                }
-	                if ((value & 0x2000) != 0)
-	                {
-	                    items.Add(19200);
-	                }
-	                if ((value & 0x4000) != 0)
-	                {
-	                    items.Add(38400);
-	                }
-	                if ((value & 0x8000) != 0)
-	                {
-	                    items.Add(56000);
-	                }
-	                if ((value & 0x40000) != 0)
-	                {
-	                    items.Add(57600);
-	                }
-	                if ((value & 0x20000) != 0)
-	                {
-	                    items.Add(115200);
-	                }
-	                if ((value & 0x10000) != 0)
-	                {
-	                    items.Add(128000);
-	                }
-	                if ((value & 0x10000000) != 0) //Programmable baud rate.
-	                {
-	                    items.Add(0);
-	                }
-				}
+                if (value != 0)
+                {
+                    if ((value & 0x1) != 0)
+                    {
+                        items.Add(75);
+                    }
+                    if ((value & 0x2) != 0)
+                    {
+                        items.Add(110);
+                    }
+                    if ((value & 0x8) != 0)
+                    {
+                        items.Add(150);
+                    }
+                    if ((value & 0x10) != 0)
+                    {
+                        items.Add(300);
+                    }
+                    if ((value & 0x20) != 0)
+                    {
+                        items.Add(600);
+                    }
+                    if ((value & 0x40) != 0)
+                    {
+                        items.Add(1200);
+                    }
+                    if ((value & 0x80) != 0)
+                    {
+                        items.Add(1800);
+                    }
+                    if ((value & 0x100) != 0)
+                    {
+                        items.Add(2400);
+                    }
+                    if ((value & 0x200) != 0)
+                    {
+                        items.Add(4800);
+                    }
+                    if ((value & 0x400) != 0)
+                    {
+                        items.Add(7200);
+                    }
+                    if ((value & 0x800) != 0)
+                    {
+                        items.Add(9600);
+                    }
+                    if ((value & 0x1000) != 0)
+                    {
+                        items.Add(14400);
+                    }
+                    if ((value & 0x2000) != 0)
+                    {
+                        items.Add(19200);
+                    }
+                    if ((value & 0x4000) != 0)
+                    {
+                        items.Add(38400);
+                    }
+                    if ((value & 0x8000) != 0)
+                    {
+                        items.Add(56000);
+                    }
+                    if ((value & 0x40000) != 0)
+                    {
+                        items.Add(57600);
+                    }
+                    if ((value & 0x20000) != 0)
+                    {
+                        items.Add(115200);
+                    }
+                    if ((value & 0x10000) != 0)
+                    {
+                        items.Add(128000);
+                    }
+                    if ((value & 0x10000000) != 0) //Programmable baud rate.
+                    {
+                        items.Add(0);
+                    }
+                }
             }
             catch
-            {        
-				items.Clear ();
+            {
+                items.Clear();
             }
-			//Add default baud rates.
-			if (items.Count == 0)
-			{
-				items.Add(300);
+            //Add default baud rates.
+            if (items.Count == 0)
+            {
+                items.Add(300);
                 items.Add(600);
                 items.Add(1800);
                 items.Add(2400);
@@ -199,7 +199,7 @@ namespace Gurux.SMS
                 items.Add(19200);
                 items.Add(38400);
                 items.Add(0); //Programmable baud rate.	
-			}
+            }
             return items.ToArray();
         }
 
@@ -209,12 +209,12 @@ namespace Gurux.SMS
         public GXSMS()
         {
             ConfigurableSettings = AvailableMediaSettings.All;
-            m_syncBase = new GXSynchronousMediaBase(180);            
+            m_syncBase = new GXSynchronousMediaBase(180);
             //Events are not currently implemented in Mono's SMS port.
             if (Environment.OSVersion.Platform != PlatformID.Unix)
             {
                 m_base.DataReceived += new System.IO.Ports.SerialDataReceivedEventHandler(GXSMS_DataReceived);
-            }         
+            }
         }
 
         internal void NotifyError(Exception ex)
@@ -241,11 +241,11 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// What level of tracing is used.
-		/// </summary>
-		public TraceLevel Trace
-		{
+        /// <summary>
+        /// What level of tracing is used.
+        /// </summary>
+        public TraceLevel Trace
+        {
             get
             {
                 return m_Trace;
@@ -254,7 +254,7 @@ namespace Gurux.SMS
             {
                 m_Trace = m_syncBase.Trace = value;
             }
-		}
+        }
 
         /// <summary>
         /// Gets the underlying System.IO.Stream object for a System.IO.Ports.SerialPort object.
@@ -307,9 +307,9 @@ namespace Gurux.SMS
                         {
                             totalCount = GXCommon.IndexOf(m_syncBase.m_Received, GXCommon.GetAsByteArray(Eop), index, m_syncBase.receivedSize);
                         }
-                    }                    
+                    }
                     m_syncBase.receivedEvent.Set();
-                }               
+                }
             }
             catch (Exception ex)
             {
@@ -325,14 +325,14 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// Used baud rate for communication.
-		/// </summary>
-		/// <remarks>Can be changed without disconnecting.</remarks>
+        /// <summary>
+        /// Used baud rate for communication.
+        /// </summary>
+        /// <remarks>Can be changed without disconnecting.</remarks>
         [Browsable(true)]
         [DefaultValue(9600)]
         [MonitoringDescription("BaudRate")]
-        public int BaudRate 
+        public int BaudRate
         {
             get
             {
@@ -355,102 +355,102 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// True if the port is in a break state; otherwise, false.
-		/// </summary>
+        /// <summary>
+        /// True if the port is in a break state; otherwise, false.
+        /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
         public bool BreakState
         {
             get
             {
-				lock(m_baseLock)
-				{
-	                return m_base.BreakState;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.BreakState;
+                }
             }
             set
-            {                
-				bool change;
-				lock(m_baseLock)
-				{
-	                change = m_base.BreakState != value;
-	                m_base.BreakState = value;
-				}
-	            if (change)
+            {
+                bool change;
+                lock (m_baseLock)
+                {
+                    change = m_base.BreakState != value;
+                    m_base.BreakState = value;
+                }
+                if (change)
                 {
                     NotifyPropertyChanged("BreakState");
                 }
             }
         }
 
-		/// <summary>
-		/// Gets the number of bytes in the receive buffer.
-		/// </summary>
+        /// <summary>
+        /// Gets the number of bytes in the receive buffer.
+        /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
         public int BytesToRead
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.BytesToRead;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.BytesToRead;
+                }
             }
         }
-       
-		/// <summary>
-		/// Gets the number of bytes in the send buffer.
-		/// </summary>
+
+        /// <summary>
+        /// Gets the number of bytes in the send buffer.
+        /// </summary>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int BytesToWrite
         {
             get
             {
-				lock(m_baseLock)
-				{
-	                return m_base.BytesToWrite;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.BytesToWrite;
+                }
             }
         }
 
-		/// <summary>
-		/// Gets the state of the Carrier Detect line for the port.
-		/// </summary>
+        /// <summary>
+        /// Gets the state of the Carrier Detect line for the port.
+        /// </summary>
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public bool CDHolding 
+        public bool CDHolding
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.CDHolding;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.CDHolding;
+                }
             }
         }
-       
-		/// <summary>
-		/// Gets the state of the Clear-to-Send line.
-		/// </summary>
+
+        /// <summary>
+        /// Gets the state of the Clear-to-Send line.
+        /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
         public bool CtsHolding
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.CtsHolding;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.CtsHolding;
+                }
             }
         }
 
-		/// <summary>
-		/// Gets or sets the standard length of data bits per byte.
-		/// </summary>
+        /// <summary>
+        /// Gets or sets the standard length of data bits per byte.
+        /// </summary>
         [MonitoringDescription("DataBits")]
         [DefaultValue(8)]
         [Browsable(true)]
@@ -458,29 +458,29 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.DataBits;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.DataBits;
+                }
             }
             set
             {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.DataBits != value;
-                	m_base.DataBits = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.DataBits != value;
+                    m_base.DataBits = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("DataBits");
                 }
             }
         }
-       
-		/// <summary>
-		/// Gets or sets a value indicating whether null bytes are ignored when transmitted between the port and the receive buffer.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets a value indicating whether null bytes are ignored when transmitted between the port and the receive buffer.
+        /// </summary>
         [Browsable(true)]
         [DefaultValue(false)]
         [MonitoringDescription("DiscardNull")]
@@ -488,19 +488,19 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.DiscardNull;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.DiscardNull;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.DiscardNull != value;
-                	m_base.DiscardNull = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.DiscardNull != value;
+                    m_base.DiscardNull = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("DiscardNull");
@@ -508,25 +508,25 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// Gets the state of the Data Set Ready (DSR) signal.
-		/// </summary>
+        /// <summary>
+        /// Gets the state of the Data Set Ready (DSR) signal.
+        /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
         public bool DsrHolding
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.DsrHolding;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.DsrHolding;
+                }
             }
         }
-       
-		/// <summary>
-		/// Gets or sets a value that enables the Data SMS Ready (DTR) signal during SMS communication.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets a value that enables the Data SMS Ready (DTR) signal during SMS communication.
+        /// </summary>
         [DefaultValue(false)]
         [MonitoringDescription("DtrEnable")]
         [Browsable(true)]
@@ -534,29 +534,29 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.DtrEnable;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.DtrEnable;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.DtrEnable != value;
-                	m_base.DtrEnable = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.DtrEnable != value;
+                    m_base.DtrEnable = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("DtrEnable");
                 }
             }
         }
-       
-		/// <summary>
-		/// Gets or sets the byte encoding for pre- and post-transmission conversion of text.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets the byte encoding for pre- and post-transmission conversion of text.
+        /// </summary>
         [MonitoringDescription("Encoding")]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [Browsable(false)]
@@ -564,92 +564,92 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.Encoding;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.Encoding;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.Encoding != value;
-                	m_base.Encoding = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.Encoding != value;
+                    m_base.Encoding = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("Encoding");
                 }
             }
         }
-        
-		/// <summary>
-		/// Gets or sets the handshaking protocol for SMS port transmission of data.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets the handshaking protocol for SMS port transmission of data.
+        /// </summary>
         [Browsable(true)]
         [MonitoringDescription("Handshake")]
         public Handshake Handshake
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.Handshake;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.Handshake;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.Handshake != value;
-                	m_base.Handshake = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.Handshake != value;
+                    m_base.Handshake = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("Handshake");
                 }
             }
         }
-        
-		/// <summary>
-		/// Gets a value indicating the open or closed status of the System.IO.Ports.SerialPort object.
-		/// </summary>
+
+        /// <summary>
+        /// Gets a value indicating the open or closed status of the System.IO.Ports.SerialPort object.
+        /// </summary>
         [Browsable(false)]
         public bool IsOpen
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.IsOpen;
-				}
-            }            
+                lock (m_baseLock)
+                {
+                    return m_base.IsOpen;
+                }
+            }
         }
 
-		/// <summary>
-		/// Gets or sets the parity-checking protocol.
-		/// </summary>
+        /// <summary>
+        /// Gets or sets the parity-checking protocol.
+        /// </summary>
         [Browsable(true)]
         [MonitoringDescription("Parity")]
         public Parity Parity
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.Parity;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.Parity;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.Parity != value;
-                	m_base.Parity = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.Parity != value;
+                    m_base.Parity = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("Parity");
@@ -657,9 +657,9 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// Gets or sets the byte that replaces invalid bytes in a data stream when a parity error occurs.
-		/// </summary>
+        /// <summary>
+        /// Gets or sets the byte that replaces invalid bytes in a data stream when a parity error occurs.
+        /// </summary>
         [Browsable(true)]
         [MonitoringDescription("ParityReplace")]
         [DefaultValue(63)]
@@ -667,25 +667,25 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.ParityReplace;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.ParityReplace;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.ParityReplace != value;
-                	m_base.ParityReplace = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.ParityReplace != value;
+                    m_base.ParityReplace = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("ParityReplace");
                 }
             }
-        }        
+        }
 
         /// <summary>
         /// Gets or sets the phone PIN number.
@@ -739,11 +739,11 @@ namespace Gurux.SMS
                     NotifyPropertyChanged("ConnectionWaitTime");
                 }
             }
-        }  
-       
-		/// <summary>
-		/// Gets or sets the port for communications, including but not limited to all available COM ports.
-		/// </summary>
+        }
+
+        /// <summary>
+        /// Gets or sets the port for communications, including but not limited to all available COM ports.
+        /// </summary>
         [MonitoringDescription("PortName")]
         [Browsable(true)]
         [DefaultValue("COM1")]
@@ -751,29 +751,29 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.PortName;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.PortName;
+                }
             }
             set
-            {               
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.PortName != value;
-                	m_base.PortName = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.PortName != value;
+                    m_base.PortName = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("PortName");
                 }
             }
         }
-        
-		/// <summary>
-		/// Gets or sets the size of the System.IO.Ports.SerialPort input buffer.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets the size of the System.IO.Ports.SerialPort input buffer.
+        /// </summary>
         [DefaultValue(4096)]
         [MonitoringDescription("ReadBufferSize")]
         [Browsable(true)]
@@ -781,29 +781,29 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.ReadBufferSize;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.ReadBufferSize;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.ReadBufferSize != value;
-                	m_base.ReadBufferSize = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.ReadBufferSize != value;
+                    m_base.ReadBufferSize = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("ReadBufferSize");
                 }
             }
         }
-       
-		/// <summary>
-		/// Gets or sets the number of milliseconds before a time-out occurs when a read operation does not finish.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets the number of milliseconds before a time-out occurs when a read operation does not finish.
+        /// </summary>
         [MonitoringDescription("ReadTimeout")]
         [Browsable(true)]
         [DefaultValue(-1)]
@@ -811,19 +811,19 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.ReadTimeout;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.ReadTimeout;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.ReadTimeout != value;
-                	m_base.ReadTimeout = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.ReadTimeout != value;
+                    m_base.ReadTimeout = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("ReadTimeout");
@@ -831,9 +831,9 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// Gets or sets the number of bytes in the internal input buffer before a System.IO.Ports.SerialPort.DataReceived event occurs.
-		/// </summary>
+        /// <summary>
+        /// Gets or sets the number of bytes in the internal input buffer before a System.IO.Ports.SerialPort.DataReceived event occurs.
+        /// </summary>
         [MonitoringDescription("ReceivedBytesThreshold")]
         [DefaultValue(1)]
         [Browsable(true)]
@@ -841,19 +841,19 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.ReceivedBytesThreshold;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.ReceivedBytesThreshold;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.ReceivedBytesThreshold != value;
-                	m_base.ReceivedBytesThreshold = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.ReceivedBytesThreshold != value;
+                    m_base.ReceivedBytesThreshold = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("ReceivedBytesThreshold");
@@ -861,9 +861,9 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// Gets or sets a value indicating whether the Request to Send (RTS) signal is enabled during SMS communication.
-		/// </summary>
+        /// <summary>
+        /// Gets or sets a value indicating whether the Request to Send (RTS) signal is enabled during SMS communication.
+        /// </summary>
         [MonitoringDescription("RtsEnable")]
         [DefaultValue(false)]
         [Browsable(true)]
@@ -871,58 +871,58 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.RtsEnable;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.RtsEnable;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.RtsEnable != value;
-                	m_base.RtsEnable = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.RtsEnable != value;
+                    m_base.RtsEnable = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("RtsEnable");
                 }
             }
         }
-       
-		/// <summary>
-		/// Gets or sets the standard number of stopbits per byte.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets the standard number of stopbits per byte.
+        /// </summary>
         [MonitoringDescription("StopBits")]
         [Browsable(true)]
         public StopBits StopBits
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.StopBits;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.StopBits;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.StopBits != value;
-                	m_base.StopBits = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.StopBits != value;
+                    m_base.StopBits = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("StopBits");
                 }
             }
         }
-        
-		/// <summary>
-		/// Gets or sets the size of the SMS port output buffer.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets the size of the SMS port output buffer.
+        /// </summary>
         [Browsable(true)]
         [DefaultValue(2048)]
         [MonitoringDescription("WriteBufferSize")]
@@ -930,49 +930,49 @@ namespace Gurux.SMS
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.WriteBufferSize;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.WriteBufferSize;
+                }
             }
             set
             {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.WriteBufferSize != value;
-                	m_base.WriteBufferSize = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.WriteBufferSize != value;
+                    m_base.WriteBufferSize = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("WriteBufferSize");
                 }
             }
         }
-        
-		/// <summary>
-		/// Gets or sets the number of milliseconds before a time-out occurs when a write operation does not finish.
-		/// </summary>
+
+        /// <summary>
+        /// Gets or sets the number of milliseconds before a time-out occurs when a write operation does not finish.
+        /// </summary>
         [MonitoringDescription("WriteTimeout")]
         [Browsable(true)]
         [DefaultValue(-1)]
-        public int WriteTimeout         
+        public int WriteTimeout
         {
             get
             {
-				lock(m_baseLock)
-				{
-                	return m_base.WriteTimeout;
-				}
+                lock (m_baseLock)
+                {
+                    return m_base.WriteTimeout;
+                }
             }
             set
-            {                
+            {
                 bool change;
-				lock(m_baseLock)
-				{
-					change = m_base.WriteTimeout != value;
-                	m_base.WriteTimeout = value;
-				}
+                lock (m_baseLock)
+                {
+                    change = m_base.WriteTimeout != value;
+                    m_base.WriteTimeout = value;
+                }
                 if (change)
                 {
                     NotifyPropertyChanged("WriteTimeout");
@@ -980,16 +980,16 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// Closes the port connection, sets the System.IO.Ports.SerialPort.IsOpen property to false, and disposes of the internal System.IO.Stream object.
-		/// </summary>
+        /// <summary>
+        /// Closes the port connection, sets the System.IO.Ports.SerialPort.IsOpen property to false, and disposes of the internal System.IO.Stream object.
+        /// </summary>
         public void Close()
         {
-			bool bOpen;
-			lock(m_baseLock)
-			{
-				bOpen = m_base.IsOpen;
-			}
+            bool bOpen;
+            lock (m_baseLock)
+            {
+                bOpen = m_base.IsOpen;
+            }
             if (bOpen)
             {
                 try
@@ -1002,7 +1002,7 @@ namespace Gurux.SMS
                     if (m_SMSReceiverThread != null && m_SMSReceiverThread.IsAlive)
                     {
                         m_SMSReceiverThread.Join();
-                    }  
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1012,7 +1012,7 @@ namespace Gurux.SMS
                 finally
                 {
                     try
-                    {                       
+                    {
                         if (m_Receiver != null)
                         {
                             m_Receiver.Closing.Set();
@@ -1024,7 +1024,7 @@ namespace Gurux.SMS
                         if (m_ReceiverThread != null && m_ReceiverThread.IsAlive)
                         {
                             m_ReceiverThread.Join();
-                        }                        
+                        }
                     }
                     catch
                     {
@@ -1035,46 +1035,46 @@ namespace Gurux.SMS
             }
         }
 
-		/// <summary>
-		/// Discards data from the SMS driver's receive buffer.
-		/// </summary>
+        /// <summary>
+        /// Discards data from the SMS driver's receive buffer.
+        /// </summary>
         public void DiscardInBuffer()
         {
-			lock(m_baseLock)
-			{
-            	m_base.DiscardInBuffer();
-			}
-        }
-        
-		/// <summary>
-		/// Discards data from the SMS driver's transmit buffer.
-		/// </summary>
-		public void DiscardOutBuffer()
-        {
-			lock(m_baseLock)
-			{
-            	m_base.DiscardOutBuffer();
-			}
+            lock (m_baseLock)
+            {
+                m_base.DiscardInBuffer();
+            }
         }
 
-		/// <summary>
-		/// Gets an array of serial port names for the current computer.
-		/// </summary>
-		/// <returns></returns>
+        /// <summary>
+        /// Discards data from the SMS driver's transmit buffer.
+        /// </summary>
+        public void DiscardOutBuffer()
+        {
+            lock (m_baseLock)
+            {
+                m_base.DiscardOutBuffer();
+            }
+        }
+
+        /// <summary>
+        /// Gets an array of serial port names for the current computer.
+        /// </summary>
+        /// <returns></returns>
         public static string[] GetPortNames()
         {
-           	return System.IO.Ports.SerialPort.GetPortNames();
+            return System.IO.Ports.SerialPort.GetPortNames();
         }
 
-		/// <summary>
-		/// User defined available ports.
-		/// </summary>
-		/// <remarks>If this is not set ports are retrieved from current system.</remarks>
-		public string[] AvailablePorts
-		{
-			get;
-			set;
-		}
+        /// <summary>
+        /// User defined available ports.
+        /// </summary>
+        /// <remarks>If this is not set ports are retrieved from current system.</remarks>
+        public string[] AvailablePorts
+        {
+            get;
+            set;
+        }
 
         string GetError(string reply)
         {
@@ -1086,9 +1086,9 @@ namespace Gurux.SMS
             return reply.Trim();
         }
 
-		/// <summary>
-		/// Opens a new SMS port connection.
-		/// </summary>
+        /// <summary>
+        /// Opens a new SMS port connection.
+        /// </summary>
         /// <remarks>
         /// If connection is succeeded but Modem data is not move try to set following:
         /// DTE/Modem flow control
@@ -1116,26 +1116,26 @@ namespace Gurux.SMS
                     {
                         eop = Eop.ToString();
                     }
-                    m_OnTrace(this, new TraceEventArgs(TraceTypes.Info, "Settings: Port: " + this.PortName + 
+                    m_OnTrace(this, new TraceEventArgs(TraceTypes.Info, "Settings: Port: " + this.PortName +
                                 " Baud Rate: " + BaudRate + " Data Bits: " + DataBits.ToString() + " Parity: "
                                 + Parity.ToString() + " Stop Bits: " + StopBits.ToString() + " Eop:" + eop, null));
                 }
-				lock(m_baseLock)
-				{
-                	m_base.Open();
+                lock (m_baseLock)
+                {
+                    m_base.Open();
                     m_base.WriteTimeout = m_ConnectionWaitTime;
                     m_base.DiscardOutBuffer();
                     m_base.DiscardInBuffer();
-				}
+                }
                 //Events are not currently implemented in Mono's serial port.
                 if (Environment.OSVersion.Platform == PlatformID.Unix)
                 {
                     m_Receiver = new ReceiveThread(this);
                     m_ReceiverThread = new Thread(new ThreadStart(m_Receiver.Receive));
                     m_ReceiverThread.IsBackground = true;
-                    m_ReceiverThread.Start();                    
+                    m_ReceiverThread.Start();
                 }
-                this.DtrEnable = this.RtsEnable = true; 
+                this.DtrEnable = this.RtsEnable = true;
                 try
                 {
                     //Send AT
@@ -1169,7 +1169,7 @@ namespace Gurux.SMS
                                     throw new Exception("Invalid reply.");
                                 }
                             }
-                        }      
+                        }
                         //Set PDU mode.
                         reply = SendCommand("AT+CMGF=0\r", false);
                         if (reply != "OK")
@@ -1204,7 +1204,7 @@ namespace Gurux.SMS
                                 if (string.IsNullOrEmpty(m_PIN))
                                 {
                                     throw new Exception("PIN is needed.");
-                                }                            
+                                }
                                 reply = SendCommand(string.Format("AT+CPIN=\"{0}\"\r", m_PIN), false);
                                 if (reply != "OK")
                                 {
@@ -1216,7 +1216,7 @@ namespace Gurux.SMS
                                 {
                                     throw new Exception("Failed to set PIN code." + GetError(reply));
                                 }
-                            }                            
+                            }
                         }
                         //Is direct SMS sending supported.
                         reply = SendCommand("at+cmgs=?\r", false);
@@ -1244,7 +1244,7 @@ namespace Gurux.SMS
                 throw;
             }
         }
-        
+
         string Connect(string cmd)
         {
             string eop = "\r\n";
@@ -1253,12 +1253,12 @@ namespace Gurux.SMS
                 WaitTime = m_ConnectionWaitTime,
                 Eop = eop
             };
-            SendBytes(ASCIIEncoding.ASCII.GetBytes(cmd));            
+            SendBytes(ASCIIEncoding.ASCII.GetBytes(cmd));
             StringBuilder sb = new StringBuilder();
             int index = -1;
             bool connected = false;
             String str = "";
-            while(index == -1)
+            while (index == -1)
             {
                 if (!m_syncBase.Receive(p))
                 {
@@ -1309,7 +1309,7 @@ namespace Gurux.SMS
                 {
                     m_syncBase.lastPosition = 0;
                 }
-                m_base.Write(value, 0, value.Length);                                
+                m_base.Write(value, 0, value.Length);
             }
         }
 
@@ -1321,20 +1321,20 @@ namespace Gurux.SMS
         string SendCommand(string cmd, string eop, bool throwError)
         {
             Gurux.Common.ReceiveParameters<string> p = new Gurux.Common.ReceiveParameters<string>()
-            {                
+            {
                 WaitTime = m_ConnectionWaitTime,
                 Eop = eop == null ? "\r\n" : eop
             };
             if (p.Eop.Equals(""))
             {
                 p.Eop = null;
-                p.Count = cmd.Length;                
+                p.Count = cmd.Length;
             }
             SendBytes(ASCIIEncoding.ASCII.GetBytes(cmd));
             StringBuilder sb = new StringBuilder();
             int index = -1;
             string reply = "";
-            while(index == -1)
+            while (index == -1)
             {
                 if (!Receive(p))
                 {
@@ -1356,7 +1356,7 @@ namespace Gurux.SMS
                     {
                         return "";
                     }
-                }                
+                }
                 if (eop != null)
                 {
                     index = reply.LastIndexOf(eop);
@@ -1374,14 +1374,14 @@ namespace Gurux.SMS
                         reply = reply.Remove(index);
                         index = 0;
                     }
-                }                
+                }
                 p.Reply = null;
             }
             if (index != 0 & eop == null)
             {
                 reply = reply.Remove(0, index);
             }
-            reply = reply.Trim();           
+            reply = reply.Trim();
             return reply;
         }
 
@@ -1481,7 +1481,7 @@ namespace Gurux.SMS
                 m_OnPropertyChanged -= value;
             }
         }
-        
+
         /// <inheritdoc cref="TraceEventHandler"/>
         [Description("Called when the Media is sending or receiving data.")]
         public event TraceEventHandler OnTrace
@@ -1494,7 +1494,7 @@ namespace Gurux.SMS
             {
                 m_OnTrace -= value;
             }
-        }        
+        }
 
         private void NotifyPropertyChanged(String info)
         {
@@ -1620,7 +1620,7 @@ namespace Gurux.SMS
                 return m_BytesReceived;
             }
         }
-        
+
         /// <summary>
         /// Gets or sets how ofter new SMSs are check.
         /// </summary>
@@ -1687,7 +1687,7 @@ namespace Gurux.SMS
         public void ResetByteCounters()
         {
             m_BytesSent = m_BytesReceived = 0;
-        }   
+        }
 
         void Gurux.Common.IGXMedia.Copy(object target)
         {
@@ -1706,11 +1706,11 @@ namespace Gurux.SMS
                 return m_Eop;
             }
             set
-            {                 
+            {
                 bool change = m_Eop != value;
                 m_Eop = value;
                 if (change)
-                {                    
+                {
                     NotifyPropertyChanged("Eop");
                 }
             }
@@ -1788,7 +1788,7 @@ namespace Gurux.SMS
                                 switch (xmlReader.Name)
                                 {
                                     case "Init":
-                                        InitializeCommands = xmlReader.ReadString().Split(new char[]{';'});
+                                        InitializeCommands = xmlReader.ReadString().Split(new char[] { ';' });
                                         break;
                                     case "PIN":
                                         PIN = xmlReader.ReadString();
@@ -1837,7 +1837,30 @@ namespace Gurux.SMS
                     }
                 }
             }
-        }       
+        }
+
+        /// <summary>
+        /// Current SMS settings as a string.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append(PortName);
+            sb.Append(' ');
+            sb.Append(BaudRate);
+            sb.Append(' ');
+            sb.Append(DataBits);
+            sb.Append(Parity);
+            sb.Append((int)StopBits);
+            sb.Append(" PIN:");
+            sb.Append(PIN);
+            sb.Append(" Number:");
+            sb.Append(PhoneNumber);
+            sb.Append(" Interval:");
+            sb.Append(SMSCheckInterval);
+            return sb.ToString();
+        }
 
         string Gurux.Common.IGXMedia.MediaType
         {
@@ -1857,7 +1880,7 @@ namespace Gurux.SMS
 
         string Gurux.Common.IGXMedia.Name
         {
-            get 
+            get
             {
                 return this.PortName;
             }
@@ -1877,18 +1900,18 @@ namespace Gurux.SMS
             return new Gurux.Shared.PropertiesForm(this.PropertiesForm, Gurux.SMS.Properties.Resources.SettingsTxt, IsOpen).ShowDialog(parent) == DialogResult.OK;
         }
 
-		/// <summary>
-		/// Sends SMS message asynchronously. <br/>
-		/// No reply from the receiver, whether or not the operation was successful, is expected.
-		/// </summary>
+        /// <summary>
+        /// Sends SMS message asynchronously. <br/>
+        /// No reply from the receiver, whether or not the operation was successful, is expected.
+        /// </summary>
         public void Send(GXSMSMessage message)
         {
             ((Gurux.Common.IGXMedia)this).Send(message, null);
         }
 
-		/// <summary>
-		/// Returns a new instance of the Settings form.
-		/// </summary>
+        /// <summary>
+        /// Returns a new instance of the Settings form.
+        /// </summary>
         public System.Windows.Forms.Form PropertiesForm
         {
             get
@@ -1924,9 +1947,9 @@ namespace Gurux.SMS
             //Code PDU.
             string data = GXSMSPdu.Code(receiver, message, type);
             long len = (data.Length / 2) - 1;
-            string cmd;            
+            string cmd;
             if (!SupportDirectSend)//Save SMS before send.
-            {                    
+            {
                 cmd = string.Format("AT+CMGW={0}\r", len);
             }
             else
@@ -1938,13 +1961,23 @@ namespace Gurux.SMS
             {
                 throw new Exception("Short message send failed.");
             }
-            reply = SendCommand(data, "", false);            
+            reply = SendCommand(data, "", false);
             //Send EOF
             reply = SendCommand(ASCIIEncoding.ASCII.GetString(new byte[] { 26 }), false);
-            if (!reply.StartsWith("+CMGW:"))
+            if (!SupportDirectSend)//Save SMS before send.
             {
-                throw new Exception("Short message send failed.\r\n" + GetError(reply));
-            }            
+                if (!reply.StartsWith("+CMGW:"))
+                {
+                    throw new Exception("Short message send failed.\r\n" + GetError(reply));
+                }
+            }
+            else
+            {
+                if (!reply.StartsWith("+CMGS:"))
+                {
+                    throw new Exception("Short message send failed.\r\n" + GetError(reply));
+                }
+            }
         }
 
         /// <inheritdoc cref="IGXMedia.Receive"/>        
@@ -1952,7 +1985,7 @@ namespace Gurux.SMS
         {
             return m_syncBase.Receive(args);
         }
-        
+
 
         void Gurux.Common.IGXMedia.Send(object data, string receiver)
         {
@@ -1971,7 +2004,7 @@ namespace Gurux.SMS
                         m_syncBase.lastPosition = 0;
                     }
                     //Use default phone number if new is not set.
-                    string number = m_PhoneNumber;                    
+                    string number = m_PhoneNumber;
                     if (!string.IsNullOrEmpty(msg.PhoneNumber))
                     {
                         number = msg.PhoneNumber;
@@ -1980,7 +2013,7 @@ namespace Gurux.SMS
                     {
                         throw new ArgumentException("Invalid phone number.");
                     }
-                    SendMessage(msg.Data, number, msg.CodeType);                    
+                    SendMessage(msg.Data, number, msg.CodeType);
                 }
             }
             else if (data is string)
@@ -1995,7 +2028,7 @@ namespace Gurux.SMS
 
         void Gurux.Common.IGXMedia.Validate()
         {
-            
+
         }
 
         int Gurux.Common.IGXMedia.ConfigurableSettings
@@ -2012,7 +2045,7 @@ namespace Gurux.SMS
                 {
                     m_base.DiscardOutBuffer();
                     m_base.Close();
-                }                
+                }
             }
             catch (Exception ex)
             {
@@ -2027,7 +2060,7 @@ namespace Gurux.SMS
             {
                 m_base.Open();
                 m_base.WriteTimeout = m_ConnectionWaitTime;
-                m_base.DtrEnable = m_base.RtsEnable = true; 
+                m_base.DtrEnable = m_base.RtsEnable = true;
             }
             try
             {
@@ -2062,7 +2095,7 @@ namespace Gurux.SMS
             }
             work.Result = false;
         }
-       
+
         /// <summary>
         /// Test is modem available
         /// </summary>
@@ -2073,7 +2106,7 @@ namespace Gurux.SMS
             {
                 GXSMSAsyncWorkForm dlg2 = new GXSMSAsyncWorkForm();
                 GXSMSAsyncWorkForm dlg = new GXSMSAsyncWorkForm();
-                dlg.Text = dlg.ConnectingLbl.Text = "Checking modem.";              
+                dlg.Text = dlg.ConnectingLbl.Text = "Checking modem.";
                 GXAsyncWork work = new GXAsyncWork(dlg, OnAsyncStateChange,
                     TestAsync, null, "Checking is modem available.", null);
                 work.Start();
@@ -2098,7 +2131,7 @@ namespace Gurux.SMS
                     ConnectingForm = null;
                 }
             }
-        }       
+        }
 
         /// <summary>
         /// Are messages removed after read from the SIM or phone memory.
@@ -2127,7 +2160,7 @@ namespace Gurux.SMS
         string DeleteMessage(int index)
         {
             string reply = SendCommand(string.Format("AT+CMGD={0}\r", index), false);
-            return reply;           
+            return reply;
         }
 
         /// <summary>
@@ -2138,9 +2171,9 @@ namespace Gurux.SMS
         {
             string reply = DeleteMessage(index);
             if (reply != "OK")
-	        {
+            {
                 throw new Exception(string.Format("Delete failed from index {0}.\r\n{1}", index, reply));
-	        }
+            }
         }
 
         /// <summary>
@@ -2184,14 +2217,14 @@ namespace Gurux.SMS
             }
             List<GXSMSMessage> messages = new List<GXSMSMessage>();
             lock (m_baseLock)
-            {                
+            {
                 for (int pos = 1; pos != maximum + 1; ++pos)
                 {
                     string reply = SendCommand(string.Format("AT+CMGR={0}\r", pos), false);
                     if (reply.StartsWith("+CMGR:"))
                     {
                         reply = reply.Remove(0, 6);
-                        string[] tmp = reply.Split(new char[]{','});                       
+                        string[] tmp = reply.Split(new char[] { ',' });
                         GXSMSMessage msg = new GXSMSMessage();
                         msg.Index = pos;
                         string status = tmp[0].Replace("\"", "").Trim();
@@ -2221,7 +2254,7 @@ namespace Gurux.SMS
                         //If this is not a empty message
                         if (tmp.Length != 1)
                         {
-                            string[] m = tmp[2].Split(new string[]{"\r\n"}, StringSplitOptions.None);
+                            string[] m = tmp[2].Split(new string[] { "\r\n" }, StringSplitOptions.None);
                             if (m.Length != 2)
                             {
                                 continue;
@@ -2278,7 +2311,7 @@ namespace Gurux.SMS
                 maximum = int.Parse(results[2]);
             }
         }
-		
+
         /// <summary>
         /// Returns network state.
         /// </summary>
@@ -2360,7 +2393,7 @@ namespace Gurux.SMS
         /// <param name="batteryCapacity"></param>
         /// <param name="averagePowerConsumption"></param>
         public void GetBatteryCharge(out int batteryCapacity, out int averagePowerConsumption)
-        {            
+        {
             batteryCapacity = averagePowerConsumption = 0;
             lock (m_baseLock)
             {
@@ -2425,16 +2458,16 @@ namespace Gurux.SMS
                 if (!reply.StartsWith("ERROR:"))
                 {
                     info.Add("Features: " + reply);
-                }                     
+                }
                 //Serial port speed.
                 reply = SendCommand("AT+IPR?\r", false);
                 int pos = reply.IndexOf("+IPR:");
                 if (pos != -1)
                 {
                     info.Add("Serial port speed: " + reply.Substring(pos + 5));
-                }  
-           }
-           return info.ToArray();
+                }
+            }
+            return info.ToArray();
         }
 
         /// <summary>
@@ -2476,15 +2509,15 @@ namespace Gurux.SMS
 
         #region IDisposable Members
 
-		/// <summary>
-		/// Closes the connection.
-		/// </summary>
+        /// <summary>
+        /// Closes the connection.
+        /// </summary>
         public void Dispose()
         {
             if (this.IsOpen)
             {
                 Close();
-            }            
+            }
         }
 
         #endregion
