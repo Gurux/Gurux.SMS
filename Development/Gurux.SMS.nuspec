@@ -24,8 +24,8 @@
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release\Gurux.SMS.dll" target="lib\portable-win+net35" />
-    <file src="bin\Release\Gurux.SMS.XML" target="lib\portable-win+net35" />
-    <file src="bin\Release\Gurux.SMS.pdb" target="lib\portable-win+net35" />
+    <file src="bin\Release\Gurux.SMS.dll" target="lib\portable-win+net40" />
+    <file src="bin\Release\Gurux.SMS.XML" target="lib\portable-win+net40" />
+    <file src="bin\Release\Gurux.SMS.pdb" target="lib\portable-win+net40" />
   </files>
 </package>
