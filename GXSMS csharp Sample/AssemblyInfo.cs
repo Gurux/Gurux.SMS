@@ -52,7 +52,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("Gurux SMS Sample")]
 [assembly: AssemblyCompany("Gurux Ltd")]
 [assembly:AssemblyProduct("")]
-[assembly:AssemblyCopyright("")]
+[assembly: AssemblyCopyright("Copyright (c) 1998-2017 Gurux Ltd. All rights reserved.")]
 [assembly:AssemblyTrademark("")]
 [assembly:AssemblyCulture("")]
 
