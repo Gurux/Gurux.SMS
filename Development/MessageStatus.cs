@@ -30,21 +30,17 @@
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 namespace Gurux.SMS
-{    
+{
     /// <summary>
     /// SMS Message Status
     /// </summary>
     public enum MessageStatus
-    {	    
+    {
+        /// <summary>
         /// Message is not read. New message
-	    /// </summary>
-	    Unread,
+        /// </summary>
+        Unread,
 	    /// <summary>
         /// Message is already read,
 	    /// </summary>

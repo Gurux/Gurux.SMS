@@ -31,12 +31,12 @@
 //---------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Gurux.SMS
 {
+    /// <summary>
+    /// SMS Message.
+    /// </summary>
     public class GXSMSMessage
     {
         /// <summary>
