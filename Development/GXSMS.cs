@@ -296,7 +296,7 @@ namespace Gurux.SMS
                         {
                             foreach (object eop in (Array)Eop)
                             {
-                                totalCount = GXCommon.IndexOf(m_syncBase.m_Received, GXCommon.GetAsByteArray(eop), index, m_syncBase.receivedSize);
+                                totalCount = Gurux.Common.GXCommon.IndexOf(m_syncBase.m_Received, Gurux.Common.GXCommon.GetAsByteArray(eop), index, m_syncBase.receivedSize);
                                 if (totalCount != -1)
                                 {
                                     break;
@@ -305,7 +305,7 @@ namespace Gurux.SMS
                         }
                         else
                         {
-                            totalCount = GXCommon.IndexOf(m_syncBase.m_Received, GXCommon.GetAsByteArray(Eop), index, m_syncBase.receivedSize);
+                            totalCount = Gurux.Common.GXCommon.IndexOf(m_syncBase.m_Received, Gurux.Common.GXCommon.GetAsByteArray(Eop), index, m_syncBase.receivedSize);
                         }
                     }
                     m_syncBase.receivedEvent.Set();
