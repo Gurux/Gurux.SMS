@@ -1,7 +1,7 @@
 //
 // --------------------------------------------------------------------------
 //  Gurux Ltd
-// 
+//
 //
 //
 // Filename:        $HeadURL$
@@ -19,14 +19,14 @@
 // This file is a part of Gurux Device Framework.
 //
 // Gurux Device Framework is Open Source software; you can redistribute it
-// and/or modify it under the terms of the GNU General Public License 
+// and/or modify it under the terms of the GNU General Public License
 // as published by the Free Software Foundation; version 2 of the License.
 // Gurux Device Framework is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of 
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// This code is licensed under the GNU General Public License v2. 
+// This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 
@@ -37,14 +37,14 @@ using System.ComponentModel;
 using Gurux.Common;
 using System.IO;
 using Gurux.Shared;
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1
 using System.Windows.Forms;
+#endif //!NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1
 using System.Xml;
 using System.Diagnostics;
 using System.IO.Ports;
 using System.Reflection;
 using System.Threading;
-using System.Drawing;
-using System.Runtime.InteropServices;
 
 namespace Gurux.SMS
 {
@@ -198,7 +198,7 @@ namespace Gurux.SMS
                 items.Add(9600);
                 items.Add(19200);
                 items.Add(38400);
-                items.Add(0); //Programmable baud rate.	
+                items.Add(0); //Programmable baud rate.
             }
             return items.ToArray();
         }
@@ -1186,7 +1186,7 @@ namespace Gurux.SMS
                         }
                         reply = SendCommand("AT+CPIN=?\r", false);
                         bool pinSupported = reply == "OK";
-                        //Is PIN Code supported.		
+                        //Is PIN Code supported.
                         if (pinSupported)
                         {
                             //Check PIN-Code
@@ -1344,7 +1344,7 @@ namespace Gurux.SMS
                 }
                 sb.Append(p.Reply);
                 reply = sb.ToString();
-                //Remove echo.                
+                //Remove echo.
                 if (sb.Length >= cmd.Length && reply.StartsWith(cmd))
                 {
                     sb.Remove(0, cmd.Length);
@@ -1401,8 +1401,8 @@ namespace Gurux.SMS
         }
 
         /// <summary>
-        /// Errors that occur after the connection is established, are sent through this method. 
-        /// </summary>       
+        /// Errors that occur after the connection is established, are sent through this method.
+        /// </summary>
         [Description("Errors that occur after the connection is established, are sent through this method.")]
         public event Gurux.Common.ErrorEventHandler OnError
         {
@@ -1419,7 +1419,7 @@ namespace Gurux.SMS
 
         /// <summary>
         /// Media component sends notification, when its state changes.
-        /// </summary>       
+        /// </summary>
         [Description("Media component sends notification, when its state changes.")]
         public event MediaStateChangeEventHandler OnMediaStateChange
         {
@@ -1884,6 +1884,7 @@ namespace Gurux.SMS
             }
         }
 
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1
         /// <summary>
         /// Shows the serial port Properties dialog.
         /// </summary>
@@ -1899,15 +1900,6 @@ namespace Gurux.SMS
         }
 
         /// <summary>
-        /// Sends SMS message asynchronously. <br/>
-        /// No reply from the receiver, whether or not the operation was successful, is expected.
-        /// </summary>
-        public void Send(GXSMSMessage message)
-        {
-            ((Gurux.Common.IGXMedia)this).Send(message, null);
-        }
-
-        /// <summary>
         /// Returns a new instance of the Settings form.
         /// </summary>
         public System.Windows.Forms.Form PropertiesForm
@@ -1916,6 +1908,16 @@ namespace Gurux.SMS
             {
                 return new Settings(this);
             }
+        }
+
+#endif //!NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1
+        /// <summary>
+        /// Sends SMS message asynchronously. <br/>
+        /// No reply from the receiver, whether or not the operation was successful, is expected.
+        /// </summary>
+        public void Send(GXSMSMessage message)
+        {
+            ((Gurux.Common.IGXMedia)this).Send(message, null);
         }
 
         /// <summary>
@@ -1978,7 +1980,7 @@ namespace Gurux.SMS
             }
         }
 
-        /// <inheritdoc cref="IGXMedia.Receive"/>        
+        /// <inheritdoc cref="IGXMedia.Receive"/>
         public bool Receive<T>(Gurux.Common.ReceiveParameters<T> args)
         {
             if (!IsOpen)
@@ -2113,7 +2115,7 @@ namespace Gurux.SMS
                     TestAsync, null, "Checking is modem available.", null);
                 work.Start();
                 work.Wait(m_ConnectionWaitTime);
-                //If we try to check from the COM port where is no modem thread is locked.               
+                //If we try to check from the COM port where is no modem thread is locked.
                 if (work.Result == null)
                 {
                     return false;

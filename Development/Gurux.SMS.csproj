@@ -5,7 +5,7 @@
     <AssemblyName>Gurux.SMS</AssemblyName>
     <Company>Gurux Ltd</Company>
     <Authors>Gurux Ltd</Authors>
-    <Copyright>Copyright (c) 1998-2019 Gurux Ltd. All rights reserved.</Copyright>
+    <Copyright>Copyright (c) 1998-2020 Gurux Ltd. All rights reserved.</Copyright>
     <PackageProjectUrl>www.gurux.fi/index.php?q=GXMedia</PackageProjectUrl>
     <PackageLicenseUrl></PackageLicenseUrl>
     <Description>Using Gurux SMS media component you can send Short messages using your mobile phone and AT comands.</Description>
@@ -15,11 +15,11 @@
     <TargetFrameworks>net45;net40;net35</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/gurux/Gurux.SMS</RepositoryUrl>
-    <PackageTags>Gurux Device Framework SMS </PackageTags>
+    <PackageTags>Gurux Device Framework SMS</PackageTags>
     <PackageId>Gurux.SMS</PackageId>
     <ApplicationIcon>SMS.ico</ApplicationIcon>
-    <PackageIconUrl>http://www.gurux.org/gurux.ico</PackageIconUrl>
     <PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression>
+    <PackageIcon>GXSMS.png</PackageIcon>
   </PropertyGroup>
  
  <ItemGroup>
@@ -36,12 +36,16 @@
    </EmbeddedResource>
  </ItemGroup>
  <ItemGroup>
-    <PackageReference Include="Gurux.Common" Version="8.1.1907.301" />
+    <PackageReference Include="Gurux.Common" Version="8.1.2001.2404" />
  </ItemGroup>
- 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net45' or '$(TargetFramework)' == 'net40' or '$(TargetFramework)' == 'net35'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1' or '$(TargetFramework)' == 'netcoreapp2.1' or '$(TargetFramework)' == 'netcoreapp2.0' or '$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'">
+    <PackageReference Include="System.IO.Ports" Version="4.7.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net46' or '$(TargetFramework)' == 'net45' or '$(TargetFramework)' == 'net40' or '$(TargetFramework)' == 'net35'">
     <Reference Include="System.Data.Linq" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
-
+  <ItemGroup>
+    <None Include="GXSMS.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>

@@ -16,7 +16,7 @@ local.properties
 .settings/
 .loadpath
 Nuget/
-
+Development/.vs/
 .svn/
 
 # External tool builders
