@@ -197,7 +197,49 @@ namespace Gurux.SMS
                 this.StopBitsCB.Items.Add(System.IO.Ports.StopBits.Two);
                 this.StopBitsCB.SelectedItem = Target.StopBits;
             }
+            UpdateEditBoxSizes();
             Dirty = false;
+        }
+
+        /// <summary>
+        /// Because label lenght depends from the localization string, edit box sizes must be update.
+        /// </summary>
+        private void UpdateEditBoxSizes()
+        {
+            //Find max length of the localization string.
+            int maxLength = 0;
+            foreach (Control it in this.Controls)
+            {
+                if (it.Enabled)
+                {
+                    foreach (Control it2 in it.Controls)
+                    {
+                        if (it2 is Label && it2.Right > maxLength)
+                        {
+                            maxLength = it2.Right;
+                        }
+                    }
+                }
+            }
+            //Increase edit control length.
+            foreach (Control it in this.Controls)
+            {
+                if (it.Enabled)
+                {
+                    foreach (Control it2 in it.Controls)
+                    {
+                        if (it2 is ComboBox || it2 is TextBox)
+                        {
+                            it2.Width += it2.Left - maxLength - 10;
+                            it2.Left = maxLength + 10;
+                        }
+                        else if (it2 is Button)
+                        {
+
+                        }
+                    }
+                }
+            }
         }
 
         #endregion

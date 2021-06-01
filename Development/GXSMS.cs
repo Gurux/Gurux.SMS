@@ -1896,7 +1896,8 @@ namespace Gurux.SMS
         /// <seealso href="PropertiesDialog.html">Properties Dialog</seealso>
         public bool Properties(Form parent)
         {
-            return new Gurux.Shared.PropertiesForm(this.PropertiesForm, Gurux.SMS.Properties.Resources.SettingsTxt, IsOpen).ShowDialog(parent) == DialogResult.OK;
+            return new Gurux.Shared.PropertiesForm(this.PropertiesForm, Gurux.SMS.Properties.Resources.SettingsTxt, IsOpen,
+                Gurux.SMS.Properties.Resources.OK, Gurux.SMS.Properties.Resources.Cancel, "https://www.gurux.fi/GXSMSProperties").ShowDialog(parent) == DialogResult.OK;
         }
 
         /// <summary>
