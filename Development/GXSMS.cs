@@ -37,9 +37,9 @@ using System.ComponentModel;
 using Gurux.Common;
 using System.IO;
 using Gurux.Shared;
-#if !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1 && !NET6_0
 using System.Windows.Forms;
-#endif //!NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1
+#endif //!NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1 && !NET6_0
 using System.Xml;
 using System.Diagnostics;
 using System.IO.Ports;
@@ -1884,7 +1884,7 @@ namespace Gurux.SMS
             }
         }
 
-#if !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1 && !NET6_0
         /// <summary>
         /// Shows the serial port Properties dialog.
         /// </summary>
@@ -1911,7 +1911,7 @@ namespace Gurux.SMS
             }
         }
 
-#endif //!NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1
+#endif //!NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1 && !NET6_0
         /// <summary>
         /// Sends SMS message asynchronously. <br/>
         /// No reply from the receiver, whether or not the operation was successful, is expected.

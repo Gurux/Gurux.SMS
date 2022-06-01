@@ -224,4 +224,4 @@ pip-log.txt
 *.ide
 *.lock
 Development/.vs/Gurux.SMS/DesignTimeBuild/.dtbcache
-GXSMS csharp Sample/.vs/GXSMS csharp Sample/DesignTimeBuild/.dtbcache
+GXSMS csharp Sample/.vs/
