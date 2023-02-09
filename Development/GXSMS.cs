@@ -37,9 +37,9 @@ using System.ComponentModel;
 using Gurux.Common;
 using System.IO;
 using Gurux.Shared;
-#if !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1 && !NET6_0
+#if NET462_OR_GREATER || WINDOWS
 using System.Windows.Forms;
-#endif //!NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1 && !NET6_0
+#endif //NET462_OR_GREATER || WINDOWS
 using System.Xml;
 using System.Diagnostics;
 using System.IO.Ports;
@@ -58,7 +58,9 @@ namespace Gurux.SMS
         internal GXSMSMessage SyncMessage;
         int m_SMSCheckInterval;
         string m_PhoneNumber;
+#if NET462_OR_GREATER || WINDOWS
         GXSMSAsyncWorkForm ConnectingForm;
+#endif //NET462_OR_GREATER || WINDOWS
         bool SupportDirectSend;
         int m_ConnectionWaitTime = 3000;
         string m_PIN;
@@ -1229,10 +1231,10 @@ namespace Gurux.SMS
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     Close();
-                    throw ex;
+                    throw;
                 }
                 NotifyMediaStateChange(MediaState.Open);
             }
@@ -1884,7 +1886,7 @@ namespace Gurux.SMS
             }
         }
 
-#if !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1 && !NET6_0
+#if NET462_OR_GREATER || WINDOWS
         /// <summary>
         /// Shows the serial port Properties dialog.
         /// </summary>
@@ -1911,7 +1913,7 @@ namespace Gurux.SMS
             }
         }
 
-#endif //!NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETCOREAPP3_1 && !NET6_0
+#endif //NET462_OR_GREATER || WINDOWS
         /// <summary>
         /// Sends SMS message asynchronously. <br/>
         /// No reply from the receiver, whether or not the operation was successful, is expected.
@@ -2042,6 +2044,7 @@ namespace Gurux.SMS
             set;
         }
 
+#if NET462_OR_GREATER || WINDOWS
         void OnAsyncStateChange(object sender, GXAsyncWork work, object[] parameters, AsyncState state, string text)
         {
             try
@@ -2058,7 +2061,6 @@ namespace Gurux.SMS
                 MessageBox.Show(ex.Message);
             }
         }
-
         void TestAsync(object sender, GXAsyncWork work, object[] parameters)
         {
             lock (m_baseLock)
@@ -2137,6 +2139,7 @@ namespace Gurux.SMS
                 }
             }
         }
+#endif //NET462_OR_GREATER || WINDOWS
 
         /// <summary>
         /// Are messages removed after read from the SIM or phone memory.
