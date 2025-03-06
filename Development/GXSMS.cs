@@ -37,9 +37,6 @@ using System.ComponentModel;
 using Gurux.Common;
 using System.IO;
 using Gurux.Shared;
-#if NET462_OR_GREATER || WINDOWS
-using System.Windows.Forms;
-#endif //NET462_OR_GREATER || WINDOWS
 using System.Xml;
 using System.Diagnostics;
 using System.IO.Ports;
@@ -1896,10 +1893,11 @@ namespace Gurux.SMS
         /// <seealso cref="BaudRate">BaudRate</seealso>
         /// <seealso cref="DataBits">DataBits</seealso>
         /// <seealso href="PropertiesDialog.html">Properties Dialog</seealso>
-        public bool Properties(Form parent)
+        public bool Properties(System.Windows.Forms.Form parent)
         {
-            return new Gurux.Shared.PropertiesForm(this.PropertiesForm, Gurux.SMS.Properties.Resources.SettingsTxt, IsOpen,
-                Gurux.SMS.Properties.Resources.OK, Gurux.SMS.Properties.Resources.Cancel, "https://www.gurux.fi/GXSMSProperties").ShowDialog(parent) == DialogResult.OK;
+            return new Gurux.Shared.PropertiesForm(PropertiesForm, Gurux.SMS.Properties.Resources.SettingsTxt, IsOpen,
+                Gurux.SMS.Properties.Resources.OK, Gurux.SMS.Properties.Resources.Cancel, 
+                "https://www.gurux.fi/GXSMSProperties").ShowDialog(parent) == System.Windows.Forms.DialogResult.OK;
         }
 
         /// <summary>
@@ -2057,8 +2055,7 @@ namespace Gurux.SMS
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
-                MessageBox.Show(ex.Message);
+                System.Windows.Forms.MessageBox.Show(ex.Message);
             }
         }
         void TestAsync(object sender, GXAsyncWork work, object[] parameters)
@@ -2107,7 +2104,7 @@ namespace Gurux.SMS
         /// Test is modem available
         /// </summary>
         /// <returns></returns>
-        public bool Test(Form parent)
+        public bool Test(System.Windows.Forms.Form parent)
         {
             try
             {

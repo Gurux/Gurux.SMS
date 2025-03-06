@@ -51,6 +51,7 @@ namespace Gurux.SMS
 
         PropertyChangedEventHandler propertyChanged;
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool Dirty
         {
             get;

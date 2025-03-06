@@ -5,14 +5,14 @@
     <AssemblyName>Gurux.SMS</AssemblyName>
     <Company>Gurux Ltd</Company>
     <Authors>Gurux Ltd</Authors>
-    <Copyright>Copyright (c) 1998-2023 Gurux Ltd. All rights reserved.</Copyright>
-    <PackageProjectUrl>www.gurux.fiGXSMS</PackageProjectUrl>
+    <Copyright>Copyright (c) 1998-2025 Gurux Ltd. All rights reserved.</Copyright>
+    <PackageProjectUrl>www.gurux.fi/GXSMS</PackageProjectUrl>
     <PackageLicenseUrl></PackageLicenseUrl>
     <Description>Using Gurux SMS media component you can send Short messages using your mobile phone and AT comands.</Description>
     <Version Condition=" '$(BUILD_BUILDNUMBER)' == '' ">0.0.1-local</Version>
     <Version Condition=" '$(BUILD_BUILDNUMBER)' != '' ">$(BUILD_BUILDNUMBER)</Version>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <TargetFrameworks>net6.0-windows;net60;net462;netcoreapp3.1;netstandard2.1;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net90;net9.0-windows;net80;net8.0-windows;net6.0-windows;net60;net462;netcoreapp3.1;netstandard2.1;netstandard2.0</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <RepositoryUrl>https://github.com/gurux/Gurux.SMS</RepositoryUrl>
     <PackageTags>Gurux Device Framework SMS</PackageTags>
@@ -29,8 +29,17 @@
     <TargetFramework>net60-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
+<PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+        <TargetFramework>net80-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
+    </PropertyGroup>
 
- <ItemGroup Condition="'$(TargetFramework)' == 'net60' or '$(TargetFramework)' == 'netcoreapp3.1' or '$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'">
+    <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-windows'">
+        <TargetFramework>net90-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'net90' or '$(TargetFramework)' == 'net80' or '$(TargetFramework)' == 'net60' or '$(TargetFramework)' == 'netcoreapp3.1' or '$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'">
       <Compile Remove="Settings.cs" />
      <Compile Remove="Settings.Designer.cs" />
      <Compile Remove="GXSMSAsyncWorkForm.cs" />
@@ -38,24 +47,52 @@
      <Compile Remove="Shared\PropertiesForm.cs" />
      <Compile Remove="Shared\PropertiesForm.Designer.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Gurux.Common" Version="8.4.2302.901" />
-    <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
- </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1' or '$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'">
-    <PackageReference Include="System.IO.Ports" Version="5.0.1" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net60' or '$(TargetFramework)' == 'net6.0-windows'">
-    <PackageReference Include="System.IO.Ports" Version="7.0.0" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
-    <Reference Include="System.Data.Linq" />
-    <Reference Include="System.Windows.Forms" />
-  </ItemGroup>
-
- <ItemGroup Condition="'$(TargetFramework)' == 'net60' or '$(TargetFramework)' == 'netcoreapp3.1' or '$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1'">
-    <PackageReference Include="System.Drawing.Common" Version="6.0.0" />
-  </ItemGroup>
+ <ItemGroup>
+        <PackageReference Include="Gurux.Common" Version="8.4.2503.602" />
+        <PackageReference Include="System.Resources.Extensions" Version="9.0.2" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net90-windows' or '$(TargetFramework)' == 'net80-windows' or '$(TargetFramework)' == 'net462'">
+        <Reference Include="System.Data.Linq" />
+        <Reference Include="System.Windows.Forms" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+        <PackageReference Include="System.Resources.Extensions">
+            <Version>5.0.0</Version>
+        </PackageReference>
+        <PackageReference Include="System.Drawing.Common">
+            <Version>6.0.0</Version>
+        </PackageReference>
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+        <PackageReference Include="System.Resources.Extensions">
+            <Version>5.0.0</Version>
+        </PackageReference>
+        <PackageReference Include="System.Drawing.Common">
+            <Version>6.0.0</Version>
+        </PackageReference>
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+        <PackageReference Include="System.Resources.Extensions">
+            <Version>5.0.0</Version>
+        </PackageReference>
+        <PackageReference Include="System.Drawing.Common">
+            <Version>6.0.0</Version>
+        </PackageReference>
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net60'">
+        <PackageReference Include="System.Drawing.Common">
+            <Version>6.0.0</Version>
+        </PackageReference>
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1' or '$(TargetFramework)' == 'netcoreapp2.1' or '$(TargetFramework)' == 'netcoreapp2.0' or '$(TargetFramework)' == 'netstandard2.0' or '$(TargetFramework)' == 'netstandard2.1' or '$(TargetFramework)' == 'net60' or '$(TargetFramework)' == 'net6.0-windows' or '$(TargetFramework)' == 'net462'">
+        <PackageReference Include="System.IO.Ports" Version="6.0.0" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net90' or '$(TargetFramework)' == 'net80' or '$(TargetFramework)' == 'net9.0-windows' or '$(TargetFramework)' == 'net8.0-windows'">
+        <PackageReference Include="System.IO.Ports" Version="9.0.2" />
+        <PackageReference Include="System.Drawing.Common">
+            <Version>6.0.0</Version>
+        </PackageReference>
+    </ItemGroup>
   <ItemGroup>
     <None Include="GXSMS.png" Pack="true" PackagePath="\" />
   </ItemGroup>
