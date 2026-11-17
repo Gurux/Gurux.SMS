@@ -225,3 +225,10 @@ pip-log.txt
 *.lock
 Development/.vs/Gurux.SMS/DesignTimeBuild/.dtbcache
 GXSMS csharp Sample/.vs/
+
+# Local package verification output
+/artifacts/
+
+# Tests and validation outputs stay local.
+**/[Tt]ests/
+artifacts/

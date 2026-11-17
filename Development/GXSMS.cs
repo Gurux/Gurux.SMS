@@ -1,2530 +1,362 @@
-//
 // --------------------------------------------------------------------------
-//  Gurux Ltd
+// Gurux Ltd
 //
+// Copyright (c) Gurux Ltd.
 //
+// This file is part of Gurux Device Framework.
 //
-// Filename:        $HeadURL$
+// Commit: $Format:%H$
+// Date:   $Format:%cI$
 //
-// Version:         $Revision$,
-//                  $Date$
-//                  $Author$
+// This software is available under either of the following licenses:
 //
-// Copyright (c) Gurux Ltd
+// 1. GNU General Public License, version 2 only (GPL-2.0-only).
+//    See the LICENSE file included with this distribution.
 //
-//---------------------------------------------------------------------------
+// 2. A commercial license granted by Gurux Ltd under a separate written
+//    agreement. Use under this option requires a valid commercial license
+//    and is governed by the terms of that agreement.
 //
-//  DESCRIPTION
+// If you have not obtained a commercial license from Gurux Ltd,
+// use of this software is governed by GPL-2.0-only.
 //
-// This file is a part of Gurux Device Framework.
+// Commercial licensing: https://www.gurux.fi/
 //
-// Gurux Device Framework is Open Source software; you can redistribute it
-// and/or modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; version 2 of the License.
-// Gurux Device Framework is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU General Public License for more details.
-//
-// This code is licensed under the GNU General Public License v2.
-// Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
-//---------------------------------------------------------------------------
-
-using System;
-using System.Collections.Generic;
+// SPDX-License-Identifier: GPL-2.0-only OR LicenseRef-Gurux-Commercial
+// --------------------------------------------------------------------------
 using System.Text;
-using System.ComponentModel;
-using Gurux.Common;
-using System.IO;
-using Gurux.Shared;
+using System.Text.Json;
 using System.Xml;
-using System.Diagnostics;
-using System.IO.Ports;
-using System.Reflection;
-using System.Threading;
+using System.Xml.Linq;
+using Gurux.Serial;
+using Gurux.Common;
+using Gurux.Terminal;
+using Gurux.SMS.Enums;
 
-namespace Gurux.SMS
+namespace Gurux.SMS;
+/// <summary>Asynchronous SMS media using Android telephony or AT modem commands on a serial transport.</summary>
+public partial class GXSMS : GXTerminal
 {
-    /// <summary>
-    /// A media component that enables sending short messages (SMS).
-    /// </summary>
-    public class GXSMS : IGXMedia, INotifyPropertyChanged, IDisposable
+    /// <summary>Opens the embedded PNG icon for this media without loading a UI framework.</summary>
+    /// <returns>A new readable stream positioned at the beginning, or null if the embedded icon is unavailable.</returns>
+    /// <remarks>The caller owns the stream and must dispose it. Each call returns an independent stream.</remarks>
+    public override Stream? OpenIcon()
     {
-        private object m_sync = new object();
-        internal AutoResetEvent m_SMSReceived = new AutoResetEvent(false);
-        internal GXSMSMessage SyncMessage;
-        int m_SMSCheckInterval;
-        string m_PhoneNumber;
-#if NET462_OR_GREATER || WINDOWS
-        GXSMSAsyncWorkForm ConnectingForm;
-#endif //NET462_OR_GREATER || WINDOWS
-        bool SupportDirectSend;
-        int m_ConnectionWaitTime = 3000;
-        string m_PIN;
-        TraceLevel m_Trace;
-        static Dictionary<string, List<int>> BaudRates = new Dictionary<string, List<int>>();
-        object m_Eop;
-        GXSynchronousMediaBase m_syncBase;
-        UInt64 m_BytesSent, m_BytesReceived;
-        readonly object m_Synchronous = new object();
-        readonly object m_baseLock = new object();
-        internal System.IO.Ports.SerialPort m_base = new System.IO.Ports.SerialPort();
-        ReceiveThread m_Receiver;
-        SMSReceiveThread m_SMSReceiver;
-        Thread m_ReceiverThread;
-        Thread m_SMSReceiverThread;
+        return typeof(GXSMS).Assembly.GetManifestResourceStream("Gurux.SMS.MediaIcon.png");
+    }
+
+    /// <summary>Creates native SMS media on Android, or an operating system serial modem on other platforms.</summary>
+    public GXSMS()
+    {
+#if ANDROID
+        smsPlatform = new AndroidSmsPlatform();
+#endif
+    }
+
+    /// <summary>Creates SMS media that owns the modem stream returned by the supplied serial transport factory.</summary>
+    /// <param name="streamFactory">Creates an owned readable and writable stream for the supplied serial settings and cancellation token.</param>
+    /// <exception cref="ArgumentNullException">The stream factory is null.</exception>
+    public GXSMS(Func<SerialPortSettings, CancellationToken, ValueTask<Stream>> streamFactory) : base(streamFactory)
+    {
+    }
+
+    /// <inheritdoc/>
+    protected override bool DialOnOpen => false;
+    /// <summary>Gets or sets the optional SIM PIN supplied during modem initialization; native Android SMS ignores it.</summary>
+    public string PIN { get; set; } = "";
+    /// <summary>Gets or sets the modem's outgoing alphabet; Android chooses encoding and multipart boundaries automatically.</summary>
+    public MessageCodeType CodeType { get; set; } = MessageCodeType.Bits7;
+    /// <inheritdoc/>
+    public override string MediaType => "SMS";
+
+    /// <summary>Stores terminal configuration, optional SIM PIN, outgoing alphabet and SMS operating mode for JSON persistence.</summary>
+    public sealed class SmsSettings
+    {
+        /// <summary>Gets or sets the JSON-serialized configuration of the underlying AT terminal.</summary>
+        public string Terminal { get; set; } = "{}";
+        /// <summary>Gets or sets the optional SIM PIN supplied during modem initialization.</summary>
+        public string PIN { get; set; } = "";
+        /// <summary>Gets or sets the alphabet used when encoding outgoing messages.</summary>
+        public MessageCodeType CodeType { get; set; }
+        /// <summary>Gets or sets which SMS operations are enabled; omitted legacy settings enable both.</summary>
+        public SmsMode Mode { get; set; } = SmsMode.SendAndReceive;
+    }
+
+    /// <summary>Gets or replaces SMS settings using legacy terminal XML elements together with PIN, CodeType and Mode.</summary>
+    /// <remarks>The PIN is included in plain text. Accepts XML fragments or an SMS wrapper; null restores defaults.</remarks>
+    /// <exception cref="InvalidOperationException">The underlying serial transport is open, opening or awaiting cleanup.</exception>
+    /// <exception cref="XmlException">The supplied XML is malformed.</exception>
+    /// <exception cref="FormatException">A numeric, timeout or Boolean setting is malformed.</exception>
+    /// <exception cref="ArgumentException">A serial framing or SMS alphabet enumeration cannot be parsed.</exception>
+    public override string? Settings
+    {
+        get => base.Settings + new XElement("PIN", PIN).ToString(SaveOptions.DisableFormatting)
+            + new XElement("CodeType", (int)CodeType).ToString(SaveOptions.DisableFormatting)
+            + new XElement("Mode", (int)Mode).ToString(SaveOptions.DisableFormatting);
+        set
+        {
+            var root = XElement.Parse("<Settings>" + value + "</Settings>");
+            var xml = root.Element("SMS") ?? root;
+            string pin = (string?)xml.Element("PIN") ?? string.Empty;
+            MessageCodeType codeType = Enum.Parse<MessageCodeType>((string?)xml.Element("CodeType") ?? "Bits7");
+            SmsMode selectedMode = Enum.Parse<SmsMode>((string?)xml.Element("Mode") ?? "SendAndReceive");
+            if (!Enum.IsDefined(selectedMode)) { throw new ArgumentOutOfRangeException(nameof(value)); }
+            ApplySmsSettings(() =>
+            {
+                base.Settings = string.Concat(xml.Elements().Select(element => element.ToString(SaveOptions.DisableFormatting)));
+                PIN = pin;
+                CodeType = codeType;
+                mode = selectedMode;
+            });
+        }
+    }
+
+    /// <summary>Gets or replaces JSON-serialized terminal settings, the SIM PIN, outgoing alphabet and operating mode.</summary>
+    /// <remarks>The serialized value includes the PIN in plain text and must be treated as sensitive configuration.
+    /// Assigning null restores defaults. The underlying transport must be closed with no pending open or cleanup work.</remarks>
+    /// <exception cref="InvalidOperationException">The underlying serial transport is open, opening or awaiting cleanup.</exception>
+    /// <exception cref="JsonException">The supplied SMS, terminal or serial settings are not valid JSON.</exception>
+    /// <exception cref="ArgumentException">The SMS, terminal or serial JSON value is null.</exception>
+    public override string? JsonSettings
+    {
+        get => JsonSerializer.Serialize(new SmsSettings { Terminal = base.JsonSettings!, PIN = PIN, CodeType = CodeType, Mode = Mode }, SmsJsonContext.Default.SmsSettings);
+        set
+        {
+            var settings = value == null ? new SmsSettings() : JsonSerializer.Deserialize(value, SmsJsonContext.Default.SmsSettings) ?? throw new ArgumentException(global::Gurux.SMS.Properties.Resources.Get("InvalidSMSSettings"));
+            if (!Enum.IsDefined(settings.Mode)) { throw new ArgumentOutOfRangeException(nameof(value)); }
+            ApplySmsSettings(() =>
+            {
+                base.JsonSettings = settings.Terminal;
+                PIN = settings.PIN;
+                CodeType = settings.CodeType;
+                mode = settings.Mode;
+            });
+        }
+    }
+
+    /// <summary>Collects mode errors and native timeout errors or modem configuration and SIM PIN errors.</summary>
+    /// <returns>All localized configuration errors, or an empty list when the selected mode is valid.</returns>
+    public override IReadOnlyList<GXValidationError> Validate()
+    {
+        var errors = UsesNativeSms ? new List<GXValidationError>() : new List<GXValidationError>(base.Validate());
+        if (!Enum.IsDefined(Mode))
+        {
+            errors.Add(new(nameof(Mode), "InvalidValue", global::Gurux.SMS.Properties.Resources.Get("InvalidSmsMode")));
+        }
+        if (UsesNativeSms)
+        {
+            if (ConnectTimeout <= TimeSpan.Zero)
+            {
+                errors.Add(new(nameof(ConnectTimeout), "OutOfRange", global::Gurux.SMS.Properties.Resources.Get("ConnectionTimeoutMustBePositive")));
+            }
+        }
+        else if (PIN.Length > 0 && (PIN.Length is < 4 or > 8 || PIN.Any(c => !char.IsAsciiDigit(c))))
+        {
+            errors.Add(new(nameof(PIN), "InvalidValue", global::Gurux.SMS.Properties.Resources.Get("PINMustContain4To8Digits")));
+        }
+        return errors;
+    }
+
+    /// <summary>Validates the mode and, for AT modem connections, terminal settings and the optional SIM PIN.</summary>
+    /// <exception cref="ArgumentException">The terminal settings or SIM PIN are invalid.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The serial framing or command timeout is outside its supported range.</exception>
+    protected override void ValidateForOpen()
+    {
+        if (!Enum.IsDefined(Mode)) { throw new ArgumentOutOfRangeException(nameof(Mode)); }
+        if (UsesNativeSms)
+        {
+            if (ConnectTimeout <= TimeSpan.Zero) { throw new ArgumentOutOfRangeException(nameof(ConnectTimeout)); }
+            return;
+        }
+        base.ValidateForOpen();
+        if (PIN.Length > 0 && (PIN.Length is < 4 or > 8 || PIN.Any(c => !char.IsAsciiDigit(c))))
+        {
+            throw new ArgumentException(global::Gurux.SMS.Properties.Resources.Get("PINMustContain4To8Digits"));
+        }
+    }
 
-        /// <summary>
-        /// Get baud rates supported by given serial port.
-        /// </summary>
-        static public int[] GetAvailableBaudRates(string portName)
+    /// <inheritdoc/>
+    protected override async Task InitializeAsync(CancellationToken cancellationToken)
+    {
+        await base.InitializeAsync(cancellationToken).ConfigureAwait(false);
+        if (PIN.Length != 0)
         {
-            if (BaudRates.ContainsKey(portName.ToLower()))
-            {
-                return BaudRates[portName.ToLower()].ToArray();
-            }
-            if (string.IsNullOrEmpty(portName))
-            {
-                portName = GXSMS.GetPortNames()[0];
-            }
-            List<int> items = new List<int>();
-            BaudRates[portName.ToLower()] = items;
-            try
-            {
-                Int32 value = 0;
-                using (SerialPort port = new SerialPort(portName))
-                {
-                    port.Open();
-                    FieldInfo fi = port.BaseStream.GetType().GetField("commProp", BindingFlags.Instance | BindingFlags.NonPublic);
-                    if (fi != null)
-                    {
-                        object p = fi.GetValue(port.BaseStream);
-                        value = (Int32)p.GetType().GetField("dwSettableBaud", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public).GetValue(p);
-                    }
-                }
-                if (value != 0)
-                {
-                    if ((value & 0x1) != 0)
-                    {
-                        items.Add(75);
-                    }
-                    if ((value & 0x2) != 0)
-                    {
-                        items.Add(110);
-                    }
-                    if ((value & 0x8) != 0)
-                    {
-                        items.Add(150);
-                    }
-                    if ((value & 0x10) != 0)
-                    {
-                        items.Add(300);
-                    }
-                    if ((value & 0x20) != 0)
-                    {
-                        items.Add(600);
-                    }
-                    if ((value & 0x40) != 0)
-                    {
-                        items.Add(1200);
-                    }
-                    if ((value & 0x80) != 0)
-                    {
-                        items.Add(1800);
-                    }
-                    if ((value & 0x100) != 0)
-                    {
-                        items.Add(2400);
-                    }
-                    if ((value & 0x200) != 0)
-                    {
-                        items.Add(4800);
-                    }
-                    if ((value & 0x400) != 0)
-                    {
-                        items.Add(7200);
-                    }
-                    if ((value & 0x800) != 0)
-                    {
-                        items.Add(9600);
-                    }
-                    if ((value & 0x1000) != 0)
-                    {
-                        items.Add(14400);
-                    }
-                    if ((value & 0x2000) != 0)
-                    {
-                        items.Add(19200);
-                    }
-                    if ((value & 0x4000) != 0)
-                    {
-                        items.Add(38400);
-                    }
-                    if ((value & 0x8000) != 0)
-                    {
-                        items.Add(56000);
-                    }
-                    if ((value & 0x40000) != 0)
-                    {
-                        items.Add(57600);
-                    }
-                    if ((value & 0x20000) != 0)
-                    {
-                        items.Add(115200);
-                    }
-                    if ((value & 0x10000) != 0)
-                    {
-                        items.Add(128000);
-                    }
-                    if ((value & 0x10000000) != 0) //Programmable baud rate.
-                    {
-                        items.Add(0);
-                    }
-                }
-            }
-            catch
-            {
-                items.Clear();
-            }
-            //Add default baud rates.
-            if (items.Count == 0)
-            {
-                items.Add(300);
-                items.Add(600);
-                items.Add(1800);
-                items.Add(2400);
-                items.Add(4800);
-                items.Add(9600);
-                items.Add(19200);
-                items.Add(38400);
-                items.Add(0); //Programmable baud rate.
-            }
-            return items.ToArray();
-        }
-
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        public GXSMS()
-        {
-            ConfigurableSettings = AvailableMediaSettings.All;
-            m_syncBase = new GXSynchronousMediaBase(180);
-            //Events are not currently implemented in Mono's SMS port.
-            if (Environment.OSVersion.Platform != PlatformID.Unix)
-            {
-                m_base.DataReceived += new System.IO.Ports.SerialDataReceivedEventHandler(GXSMS_DataReceived);
-            }
-        }
-
-        internal void NotifyError(Exception ex)
-        {
-            if (m_OnError != null)
-            {
-                m_OnError(this, ex);
-            }
-            if (m_Trace >= TraceLevel.Error && m_OnTrace != null)
-            {
-                m_OnTrace(this, new TraceEventArgs(TraceTypes.Error, ex, null));
-            }
-        }
-
-        void NotifyMediaStateChange(MediaState state)
-        {
-            if (m_Trace >= TraceLevel.Info && m_OnTrace != null)
-            {
-                m_OnTrace(this, new TraceEventArgs(TraceTypes.Info, state, null));
-            }
-            if (m_OnMediaStateChange != null)
-            {
-                m_OnMediaStateChange(this, new MediaStateEventArgs(state));
-            }
-        }
-
-        /// <summary>
-        /// What level of tracing is used.
-        /// </summary>
-        public TraceLevel Trace
-        {
-            get
-            {
-                return m_Trace;
-            }
-            set
-            {
-                m_Trace = m_syncBase.Trace = value;
-            }
-        }
-
-        /// <summary>
-        /// Gets the underlying System.IO.Stream object for a System.IO.Ports.SerialPort object.
-        /// </summary>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        [Browsable(false)]
-        public Stream BaseStream
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.BaseStream;
-                }
-            }
-        }
-
-        internal void GXSMS_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
-        {
-            try
-            {
-                int count = 0, index = 0;
-                byte[] buff = null;
-                lock (m_syncBase.receivedSync)
-                {
-                    int totalCount = 0;
-                    index = m_syncBase.receivedSize;
-                    while (m_base.IsOpen && (count = m_base.BytesToRead) != 0)
-                    {
-                        totalCount += count;
-                        buff = new byte[count];
-                        m_base.Read(buff, 0, count);
-                        m_syncBase.AppendData(buff, 0, count);
-                        m_BytesReceived += (uint)count;
-                    }
-                    if (totalCount != 0 && Eop != null) //Search Eop if given.
-                    {
-                        if (Eop is Array)
-                        {
-                            foreach (object eop in (Array)Eop)
-                            {
-                                totalCount = Gurux.Common.GXCommon.IndexOf(m_syncBase.m_Received, Gurux.Common.GXCommon.GetAsByteArray(eop), index, m_syncBase.receivedSize);
-                                if (totalCount != -1)
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            totalCount = Gurux.Common.GXCommon.IndexOf(m_syncBase.m_Received, Gurux.Common.GXCommon.GetAsByteArray(Eop), index, m_syncBase.receivedSize);
-                        }
-                    }
-                    m_syncBase.receivedEvent.Set();
-                }
-            }
-            catch (Exception ex)
-            {
-                if (this.IsSynchronous)
-                {
-                    m_syncBase.Exception = ex;
-                    m_syncBase.receivedEvent.Set();
-                }
-                else
-                {
-                    NotifyError(ex);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Used baud rate for communication.
-        /// </summary>
-        /// <remarks>Can be changed without disconnecting.</remarks>
-        [Browsable(true)]
-        [DefaultValue(9600)]
-        [MonitoringDescription("BaudRate")]
-        public int BaudRate
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.BaudRate;
-                }
-            }
-            set
-            {
-                lock (m_baseLock)
-                {
-                    bool change = m_base.BaudRate != value;
-                    m_base.BaudRate = value;
-                    if (change)
-                    {
-                        NotifyPropertyChanged("BaudRate");
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// True if the port is in a break state; otherwise, false.
-        /// </summary>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        [Browsable(false)]
-        public bool BreakState
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.BreakState;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.BreakState != value;
-                    m_base.BreakState = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("BreakState");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets the number of bytes in the receive buffer.
-        /// </summary>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        [Browsable(false)]
-        public int BytesToRead
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.BytesToRead;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets the number of bytes in the send buffer.
-        /// </summary>
-        [Browsable(false)]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public int BytesToWrite
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.BytesToWrite;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets the state of the Carrier Detect line for the port.
-        /// </summary>
-        [Browsable(false)]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public bool CDHolding
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.CDHolding;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets the state of the Clear-to-Send line.
-        /// </summary>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        [Browsable(false)]
-        public bool CtsHolding
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.CtsHolding;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the standard length of data bits per byte.
-        /// </summary>
-        [MonitoringDescription("DataBits")]
-        [DefaultValue(8)]
-        [Browsable(true)]
-        public int DataBits
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.DataBits;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.DataBits != value;
-                    m_base.DataBits = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("DataBits");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether null bytes are ignored when transmitted between the port and the receive buffer.
-        /// </summary>
-        [Browsable(true)]
-        [DefaultValue(false)]
-        [MonitoringDescription("DiscardNull")]
-        public bool DiscardNull
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.DiscardNull;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.DiscardNull != value;
-                    m_base.DiscardNull = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("DiscardNull");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets the state of the Data Set Ready (DSR) signal.
-        /// </summary>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        [Browsable(false)]
-        public bool DsrHolding
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.DsrHolding;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value that enables the Data SMS Ready (DTR) signal during SMS communication.
-        /// </summary>
-        [DefaultValue(false)]
-        [MonitoringDescription("DtrEnable")]
-        [Browsable(true)]
-        public bool DtrEnable
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.DtrEnable;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.DtrEnable != value;
-                    m_base.DtrEnable = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("DtrEnable");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the byte encoding for pre- and post-transmission conversion of text.
-        /// </summary>
-        [MonitoringDescription("Encoding")]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        [Browsable(false)]
-        public Encoding Encoding
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.Encoding;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.Encoding != value;
-                    m_base.Encoding = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("Encoding");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the handshaking protocol for SMS port transmission of data.
-        /// </summary>
-        [Browsable(true)]
-        [MonitoringDescription("Handshake")]
-        public Handshake Handshake
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.Handshake;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.Handshake != value;
-                    m_base.Handshake = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("Handshake");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets a value indicating the open or closed status of the System.IO.Ports.SerialPort object.
-        /// </summary>
-        [Browsable(false)]
-        public bool IsOpen
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.IsOpen;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the parity-checking protocol.
-        /// </summary>
-        [Browsable(true)]
-        [MonitoringDescription("Parity")]
-        public Parity Parity
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.Parity;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.Parity != value;
-                    m_base.Parity = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("Parity");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the byte that replaces invalid bytes in a data stream when a parity error occurs.
-        /// </summary>
-        [Browsable(true)]
-        [MonitoringDescription("ParityReplace")]
-        [DefaultValue(63)]
-        public byte ParityReplace
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.ParityReplace;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.ParityReplace != value;
-                    m_base.ParityReplace = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("ParityReplace");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the phone PIN number.
-        /// </summary>
-        public string PIN
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_PIN;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_PIN != value;
-                    m_PIN = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("PIN");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets how long (ms.) modem answer is waited when connection is made.
-        /// </summary>
-        public int ConnectionWaitTime
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_ConnectionWaitTime;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_ConnectionWaitTime != value;
-                    m_ConnectionWaitTime = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("ConnectionWaitTime");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the port for communications, including but not limited to all available COM ports.
-        /// </summary>
-        [MonitoringDescription("PortName")]
-        [Browsable(true)]
-        [DefaultValue("COM1")]
-        public string PortName
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.PortName;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.PortName != value;
-                    m_base.PortName = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("PortName");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the size of the System.IO.Ports.SerialPort input buffer.
-        /// </summary>
-        [DefaultValue(4096)]
-        [MonitoringDescription("ReadBufferSize")]
-        [Browsable(true)]
-        public int ReadBufferSize
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.ReadBufferSize;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.ReadBufferSize != value;
-                    m_base.ReadBufferSize = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("ReadBufferSize");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the number of milliseconds before a time-out occurs when a read operation does not finish.
-        /// </summary>
-        [MonitoringDescription("ReadTimeout")]
-        [Browsable(true)]
-        [DefaultValue(-1)]
-        public int ReadTimeout
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.ReadTimeout;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.ReadTimeout != value;
-                    m_base.ReadTimeout = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("ReadTimeout");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the number of bytes in the internal input buffer before a System.IO.Ports.SerialPort.DataReceived event occurs.
-        /// </summary>
-        [MonitoringDescription("ReceivedBytesThreshold")]
-        [DefaultValue(1)]
-        [Browsable(true)]
-        public int ReceivedBytesThreshold
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.ReceivedBytesThreshold;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.ReceivedBytesThreshold != value;
-                    m_base.ReceivedBytesThreshold = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("ReceivedBytesThreshold");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the Request to Send (RTS) signal is enabled during SMS communication.
-        /// </summary>
-        [MonitoringDescription("RtsEnable")]
-        [DefaultValue(false)]
-        [Browsable(true)]
-        public bool RtsEnable
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.RtsEnable;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.RtsEnable != value;
-                    m_base.RtsEnable = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("RtsEnable");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the standard number of stopbits per byte.
-        /// </summary>
-        [MonitoringDescription("StopBits")]
-        [Browsable(true)]
-        public StopBits StopBits
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.StopBits;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.StopBits != value;
-                    m_base.StopBits = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("StopBits");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the size of the SMS port output buffer.
-        /// </summary>
-        [Browsable(true)]
-        [DefaultValue(2048)]
-        [MonitoringDescription("WriteBufferSize")]
-        public int WriteBufferSize
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.WriteBufferSize;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.WriteBufferSize != value;
-                    m_base.WriteBufferSize = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("WriteBufferSize");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the number of milliseconds before a time-out occurs when a write operation does not finish.
-        /// </summary>
-        [MonitoringDescription("WriteTimeout")]
-        [Browsable(true)]
-        [DefaultValue(-1)]
-        public int WriteTimeout
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_base.WriteTimeout;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_base.WriteTimeout != value;
-                    m_base.WriteTimeout = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("WriteTimeout");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Closes the port connection, sets the System.IO.Ports.SerialPort.IsOpen property to false, and disposes of the internal System.IO.Stream object.
-        /// </summary>
-        public void Close()
-        {
-            bool bOpen;
-            lock (m_baseLock)
-            {
-                bOpen = m_base.IsOpen;
-            }
-            if (bOpen)
-            {
-                try
-                {
-                    m_syncBase.Close();
-                    NotifyMediaStateChange(MediaState.Closing);
-                    if (m_SMSReceiver != null)
-                    {
-                        m_SMSReceiver.Closing.Set();
-                    }
-                    if (m_SMSReceiverThread != null && m_SMSReceiverThread.IsAlive)
-                    {
-                        m_SMSReceiverThread.Join();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    NotifyError(ex);
-                    throw;
-                }
-                finally
-                {
-                    try
-                    {
-                        if (m_Receiver != null)
-                        {
-                            m_Receiver.Closing.Set();
-                        }
-                        lock (m_baseLock)
-                        {
-                            m_base.Close();
-                        }
-                        if (m_ReceiverThread != null && m_ReceiverThread.IsAlive)
-                        {
-                            m_ReceiverThread.Join();
-                        }
-                    }
-                    catch
-                    {
-                        //Ignore all errors on close.
-                    }
-                    NotifyMediaStateChange(MediaState.Closed);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Discards data from the SMS driver's receive buffer.
-        /// </summary>
-        public void DiscardInBuffer()
-        {
-            lock (m_baseLock)
-            {
-                m_base.DiscardInBuffer();
-            }
-        }
-
-        /// <summary>
-        /// Discards data from the SMS driver's transmit buffer.
-        /// </summary>
-        public void DiscardOutBuffer()
-        {
-            lock (m_baseLock)
-            {
-                m_base.DiscardOutBuffer();
-            }
-        }
-
-        /// <summary>
-        /// Gets an array of serial port names for the current computer.
-        /// </summary>
-        /// <returns></returns>
-        public static string[] GetPortNames()
-        {
-            return System.IO.Ports.SerialPort.GetPortNames();
-        }
-
-        /// <summary>
-        /// User defined available ports.
-        /// </summary>
-        /// <remarks>If this is not set ports are retrieved from current system.</remarks>
-        public string[] AvailablePorts
-        {
-            get;
-            set;
-        }
-
-        string GetError(string reply)
-        {
-            int pos = reply.IndexOf("ERROR:");
-            if (pos != -1)
-            {
-                return reply.Substring(pos + 6).Trim();
-            }
-            return reply.Trim();
-        }
-
-        /// <summary>
-        /// Opens a new SMS port connection.
-        /// </summary>
-        /// <remarks>
-        /// If connection is succeeded but Modem data is not move try to set following:
-        /// DTE/Modem flow control
-        /// AT&amp;K0  Disable flow control.
-        /// AT&amp;Q0  Direct Asynchronous mode
-        /// </remarks>
-        public void Open()
-        {
-            Close();
-            try
-            {
-                m_syncBase.Open();
-                NotifyMediaStateChange(MediaState.Opening);
-                if (m_Trace >= TraceLevel.Info && m_OnTrace != null)
-                {
-                    string eop = "None";
-                    if (Eop is byte[])
-                    {
-                        eop = BitConverter.ToString(Eop as byte[], 0);
-                    }
-                    else if (Eop != null)
-                    {
-                        eop = Eop.ToString();
-                    }
-                    m_OnTrace(this, new TraceEventArgs(TraceTypes.Info, "Settings: Port: " + this.PortName +
-                                " Baud Rate: " + BaudRate + " Data Bits: " + DataBits.ToString() + " Parity: "
-                                + Parity.ToString() + " Stop Bits: " + StopBits.ToString() + " Eop:" + eop, null));
-                }
-                lock (m_baseLock)
-                {
-                    m_base.Open();
-                    m_base.WriteTimeout = m_ConnectionWaitTime;
-                    m_base.DiscardOutBuffer();
-                    m_base.DiscardInBuffer();
-                }
-                //Events are not currently implemented in Mono's serial port.
-                if (Environment.OSVersion.Platform == PlatformID.Unix)
-                {
-                    m_Receiver = new ReceiveThread(this);
-                    m_ReceiverThread = new Thread(new ThreadStart(m_Receiver.Receive));
-                    m_ReceiverThread.IsBackground = true;
-                    m_ReceiverThread.Start();
-                }
-                this.DtrEnable = this.RtsEnable = true;
-                try
-                {
-                    //Send AT
-                    lock (m_baseLock)
-                    {
-                        if (InitializeCommands != null)
-                        {
-                            foreach (string it in InitializeCommands)
-                            {
-                                SendCommand(it + "\r\n", true);
-                            }
-                        }
-                        string reply;
-                        //Send AT
-                        reply = SendCommand("AT\r", false);
-                        if (string.Compare(reply, "OK", true) != 0)
-                        {
-                            m_base.DiscardOutBuffer();
-                            m_base.DiscardInBuffer();
-                            reply = SendCommand("AT\r", false);
-                            if (string.Compare(reply, "OK", true) != 0)
-                            {
-                                reply = SendCommand("+++", "+++", true);
-                                if (string.IsNullOrEmpty(reply))
-                                {
-                                    throw new Exception("Invalid reply.");
-                                }
-                                reply = SendCommand("AT\r", true);
-                                if (string.Compare(reply, "OK", true) != 0)
-                                {
-                                    throw new Exception("Invalid reply.");
-                                }
-                            }
-                        }
-                        //Set PDU mode.
-                        reply = SendCommand("AT+CMGF=0\r", false);
-                        if (reply != "OK")
-                        {
-                            throw new Exception("Modem is not supporting PDU.");
-                        }
-
-                        //Enable error reporting. It's OK if this fails.
-                        reply = SendCommand("AT+CMEE\r", false);
-                        //Enable verbode error code,
-                        reply = SendCommand("AT+CMEE=2\r", false);
-                        if (reply != "OK")
-                        {
-                            //Enable numeric error codes
-                            reply = SendCommand("AT+CMEE=1\r", false);
-                        }
-                        reply = SendCommand("AT+CPIN=?\r", false);
-                        bool pinSupported = reply == "OK";
-                        //Is PIN Code supported.
-                        if (pinSupported)
-                        {
-                            //Check PIN-Code
-                            //reply = SendCommand("AT+CPIN?\r", "+CPIN: READY\r\n\r\nOK\r\n", false);
-                            reply = SendCommand("AT+CPIN?\r", false);
-                            if (reply.Contains("ERROR:"))
-                            {
-                                throw new Exception("Failed to read PIN code.\r\n" + GetError(reply));
-                            }
-                            //If PIN code is needed.
-                            if (reply != "+CPIN: READY")
-                            {
-                                if (string.IsNullOrEmpty(m_PIN))
-                                {
-                                    throw new Exception("PIN is needed.");
-                                }
-                                reply = SendCommand(string.Format("AT+CPIN=\"{0}\"\r", m_PIN), false);
-                                if (reply != "OK")
-                                {
-                                    throw new Exception("Failed to set PIN code." + GetError(reply));
-                                }
-                                //Ask PIN Code again.
-                                reply = SendCommand("AT+CPIN?\r", false);
-                                if (reply != "OK")
-                                {
-                                    throw new Exception("Failed to set PIN code." + GetError(reply));
-                                }
-                            }
-                        }
-                        //Is direct SMS sending supported.
-                        reply = SendCommand("at+cmgs=?\r", false);
-                        SupportDirectSend = reply.Contains("OK");
-                        //Start SMS checker.
-                        if (m_SMSCheckInterval != 0)
-                        {
-                            m_SMSReceiver = new SMSReceiveThread(this);
-                            m_SMSReceiverThread = new Thread(new ThreadStart(m_SMSReceiver.Receive));
-                            m_SMSReceiverThread.IsBackground = true;
-                            m_SMSReceiverThread.Start();
-                        }
-                    }
-                }
-                catch (Exception)
-                {
-                    Close();
-                    throw;
-                }
-                NotifyMediaStateChange(MediaState.Open);
-            }
-            catch
-            {
-                Close();
-                throw;
-            }
-        }
-
-        string Connect(string cmd)
-        {
-            string eop = "\r\n";
-            Gurux.Common.ReceiveParameters<string> p = new Gurux.Common.ReceiveParameters<string>()
-            {
-                WaitTime = m_ConnectionWaitTime,
-                Eop = eop
-            };
-            SendBytes(ASCIIEncoding.ASCII.GetBytes(cmd));
-            StringBuilder sb = new StringBuilder();
-            int index = -1;
-            bool connected = false;
-            String str = "";
-            while (index == -1)
-            {
-                if (!m_syncBase.Receive(p))
-                {
-                    throw new Exception("Connection failed.");
-                }
-                sb.Append(p.Reply);
-                str = sb.ToString();
-                connected = str.LastIndexOf("CONNECT") != -1;
-                if (connected)
-                {
-                    index = str.LastIndexOf("\r");
-                }
-                else
-                {
-                    if (str.LastIndexOf("NO CARRIER") != -1)
-                    {
-                        throw new Exception("Connection failed: no carrier (when telephone call was being established). ");
-                    }
-                    if (str.LastIndexOf("ERROR") != -1)
-                    {
-                        throw new Exception("Connection failed: error (when telephone call was being established).");
-                    }
-                    if (str.LastIndexOf("BUSY") != -1)
-                    {
-                        throw new Exception("Connection failed: busy (when telephone call was being established).");
-                    }
-                }
-                p.Reply = null;
-                //After first success read one byte at the time.
-                p.Eop = null;
-                p.Count = 1;
-            }
-            string reply = sb.ToString();
-            return reply;
-        }
-
-        void SendBytes(byte[] value)
-        {
-            lock (m_baseLock)
-            {
-                if (m_Trace == TraceLevel.Verbose && m_OnTrace != null)
-                {
-                    m_OnTrace(this, new TraceEventArgs(TraceTypes.Sent, value, null));
-                }
-                m_BytesSent += (uint)value.Length;
-                //Reset last position if Eop is used.
-                lock (m_syncBase.receivedSync)
-                {
-                    m_syncBase.lastPosition = 0;
-                }
-                m_base.Write(value, 0, value.Length);
-            }
-        }
-
-        string SendCommand(string cmd, bool throwError)
-        {
-            return SendCommand(cmd, null, throwError);
-        }
-
-        string SendCommand(string cmd, string eop, bool throwError)
-        {
-            Gurux.Common.ReceiveParameters<string> p = new Gurux.Common.ReceiveParameters<string>()
-            {
-                WaitTime = m_ConnectionWaitTime,
-                Eop = eop == null ? "\r\n" : eop
-            };
-            if (p.Eop.Equals(""))
-            {
-                p.Eop = null;
-                p.Count = cmd.Length;
-            }
-            SendBytes(ASCIIEncoding.ASCII.GetBytes(cmd));
-            StringBuilder sb = new StringBuilder();
-            int index = -1;
-            string reply = "";
-            while (index == -1)
-            {
-                if (!Receive(p))
-                {
-                    if (throwError)
-                    {
-                        throw new Exception("Failed to receive answer from the modem. Check serial port.");
-                    }
-                    return "";
-                }
-                sb.Append(p.Reply);
-                reply = sb.ToString();
-                //Remove echo.
-                if (sb.Length >= cmd.Length && reply.StartsWith(cmd))
-                {
-                    sb.Remove(0, cmd.Length);
-                    reply = sb.ToString();
-                    //Remove echo and return if we are not expecting reply.
-                    if (eop == "")
-                    {
-                        return "";
-                    }
-                }
-                if (eop != null)
-                {
-                    index = reply.LastIndexOf(eop);
-                }
-                else if (reply.Length > 5)
-                {
-                    index = reply.LastIndexOf("\r\nOK\r\n");
-                    if (index == -1)
-                    {
-                        index = reply.LastIndexOf("ERROR:");
-                    }
-                    //If there is a message before OK show it.
-                    else if (index != 0)
-                    {
-                        reply = reply.Remove(index);
-                        index = 0;
-                    }
-                }
-                p.Reply = null;
-            }
-            if (index != 0 & eop == null)
-            {
-                reply = reply.Remove(0, index);
-            }
-            reply = reply.Trim();
-            return reply;
-        }
-
-        #region Events
-        /// <summary>
-        /// GXNet component sends received data through this method.
-        /// </summary>
-        [Description("GXNet component sends received data through this method.")]
-        public event ReceivedEventHandler OnReceived
-        {
-            add
-            {
-                m_OnReceived += value;
-            }
-            remove
-            {
-                m_OnReceived -= value;
-            }
-        }
-
-        /// <summary>
-        /// Errors that occur after the connection is established, are sent through this method.
-        /// </summary>
-        [Description("Errors that occur after the connection is established, are sent through this method.")]
-        public event Gurux.Common.ErrorEventHandler OnError
-        {
-            add
-            {
-
-                m_OnError += value;
-            }
-            remove
-            {
-                m_OnError -= value;
-            }
-        }
-
-        /// <summary>
-        /// Media component sends notification, when its state changes.
-        /// </summary>
-        [Description("Media component sends notification, when its state changes.")]
-        public event MediaStateChangeEventHandler OnMediaStateChange
-        {
-            add
-            {
-                m_OnMediaStateChange += value;
-            }
-            remove
-            {
-                m_OnMediaStateChange -= value;
-            }
-        }
-
-        /// <summary>
-        /// Called when the client is establishing a connection with a Net Server.
-        /// </summary>
-        [Description("Called when the client is establishing a connection with a Net Server.")]
-        public event ClientConnectedEventHandler OnClientConnected
-        {
-            add
-            {
-                m_OnClientConnected += value;
-            }
-            remove
-            {
-                m_OnClientConnected -= value;
-            }
-        }
-
-        /// <summary>
-        /// Called when the client has been disconnected from the network server.
-        /// </summary>
-        [Description("Called when the client has been disconnected from the network server.")]
-        public event ClientDisconnectedEventHandler OnClientDisconnected
-        {
-            add
-            {
-                m_OnClientDisconnected += value;
-            }
-            remove
-            {
-                m_OnClientDisconnected -= value;
-            }
-        }
-
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        event PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged
-        {
-            add
-            {
-                m_OnPropertyChanged += value;
-            }
-            remove
-            {
-                m_OnPropertyChanged -= value;
-            }
-        }
-
-        /// <inheritdoc cref="TraceEventHandler"/>
-        [Description("Called when the Media is sending or receiving data.")]
-        public event TraceEventHandler OnTrace
-        {
-            add
-            {
-                m_OnTrace += value;
-            }
-            remove
-            {
-                m_OnTrace -= value;
-            }
-        }
-
-        private void NotifyPropertyChanged(String info)
-        {
-            if (m_OnPropertyChanged != null)
-            {
-                m_OnPropertyChanged(this, new PropertyChangedEventArgs(info));
-            }
-        }
-
-
-        //Events
-        TraceEventHandler m_OnTrace;
-        PropertyChangedEventHandler m_OnPropertyChanged;
-        MediaStateChangeEventHandler m_OnMediaStateChange;
-        ClientConnectedEventHandler m_OnClientConnected;
-        ClientDisconnectedEventHandler m_OnClientDisconnected;
-        internal Gurux.Common.ErrorEventHandler m_OnError;
-        internal ReceivedEventHandler m_OnReceived;
-
-        #endregion //Events
-
-        /// <inheritdoc cref="IGXMedia.ConfigurableSettings"/>
-        public AvailableMediaSettings ConfigurableSettings
-        {
-            get
-            {
-                return (Gurux.SMS.AvailableMediaSettings)((IGXMedia)this).ConfigurableSettings;
-            }
-            set
-            {
-                ((IGXMedia)this).ConfigurableSettings = (int)value;
-            }
-        }
-
-        /// <inheritdoc cref="IGXMedia.Tag"/>
-        public object Tag
-        {
-            get;
-            set;
-        }
-
-        /// <inheritdoc cref="IGXMedia.MediaContainer"/>
-        IGXMediaContainer IGXMedia.MediaContainer
-        {
-            get;
-            set;
-        }
-
-        /// <inheritdoc cref="IGXMedia.SyncRoot"/>
-        [Browsable(false), ReadOnly(true)]
-        public object SyncRoot
-        {
-            get
-            {
-                //In some special cases when binary serialization is used this might be null
-                //after deserialize. Just set it.
-                if (m_sync == null)
-                {
-                    m_sync = new object();
-                }
-                return m_sync;
-            }
-        }
-
-        /// <inheritdoc cref="IGXMedia.Synchronous"/>
-        public object Synchronous
-        {
-            get
-            {
-                return m_Synchronous;
-            }
-        }
-
-        /// <inheritdoc cref="IGXMedia.IsSynchronous"/>
-        public bool IsSynchronous
-        {
-            get
-            {
-                bool reserved = System.Threading.Monitor.TryEnter(m_Synchronous, 0);
-                if (reserved)
-                {
-                    System.Threading.Monitor.Exit(m_Synchronous);
-                }
-                return !reserved;
-            }
-        }
-
-        /// <inheritdoc cref="IGXMedia.ResetSynchronousBuffer"/>
-        public void ResetSynchronousBuffer()
-        {
-            lock (m_syncBase.receivedSync)
-            {
-                m_syncBase.receivedSize = 0;
-            }
-        }
-
-        #region IGXMedia Members
-
-        /// <summary>
-        /// Sent byte count.
-        /// </summary>
-        /// <seealso cref="BytesReceived">BytesReceived</seealso>
-        /// <seealso cref="ResetByteCounters">ResetByteCounters</seealso>
-        [Browsable(false)]
-        public UInt64 BytesSent
-        {
-            get
-            {
-                return m_BytesSent;
-            }
-        }
-
-        /// <summary>
-        /// Received byte count.
-        /// </summary>
-        /// <seealso cref="BytesSent">BytesSent</seealso>
-        /// <seealso cref="ResetByteCounters">ResetByteCounters</seealso>
-        [Browsable(false)]
-        public UInt64 BytesReceived
-        {
-            get
-            {
-                return m_BytesReceived;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets how ofter new SMSs are check.
-        /// </summary>
-        public int SMSCheckInterval
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_SMSCheckInterval;
-                }
-            }
-            set
-            {
-                bool change;
-                if (value < 0)
-                {
-                    throw new ArgumentOutOfRangeException("SMS Check Interval is given in seconds.");
-                }
-                lock (m_baseLock)
-                {
-                    change = m_SMSCheckInterval != value;
-                    m_SMSCheckInterval = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("SMSCheckInterval");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the phone number.
-        /// </summary>
-        public string PhoneNumber
-        {
-            get
-            {
-                lock (m_baseLock)
-                {
-                    return m_PhoneNumber;
-                }
-            }
-            set
-            {
-                bool change;
-                lock (m_baseLock)
-                {
-                    change = m_PhoneNumber != value;
-                    m_PhoneNumber = value;
-                }
-                if (change)
-                {
-                    NotifyPropertyChanged("PhoneNumber");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Resets BytesReceived and BytesSent counters.
-        /// </summary>
-        /// <seealso cref="BytesSent">BytesSent</seealso>
-        /// <seealso cref="BytesReceived">BytesReceived</seealso>
-        public void ResetByteCounters()
-        {
-            m_BytesSent = m_BytesReceived = 0;
-        }
-
-        void Gurux.Common.IGXMedia.Copy(object target)
-        {
-            GXSMS Target = (GXSMS)target;
-            BaudRate = Target.BaudRate;
-            StopBits = Target.StopBits;
-            Parity = Target.Parity;
-            DataBits = Target.DataBits;
-        }
-
-        /// <inheritdoc cref="IGXMedia.Eop"/>
-        public object Eop
-        {
-            get
-            {
-                return m_Eop;
-            }
-            set
-            {
-                bool change = m_Eop != value;
-                m_Eop = value;
-                if (change)
-                {
-                    NotifyPropertyChanged("Eop");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Modem initial settings.
-        /// </summary>
-        string[] InitializeCommands
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// Media settings as a XML string.
-        /// </summary>
-        public string Settings
-        {
-            get
-            {
-                string tmp = "";
-                if (!string.IsNullOrEmpty(PIN))
-                {
-                    tmp += "<PIN>" + PIN + "</PIN>";
-                }
-                if (!string.IsNullOrEmpty(PhoneNumber))
-                {
-                    tmp += "<Number>" + PhoneNumber + "</Number>";
-                }
-                if (this.SMSCheckInterval != 0)
-                {
-                    tmp += "<Interval>" + SMSCheckInterval + "</Interval>";
-                }
-                if (!string.IsNullOrEmpty(PortName))
-                {
-                    tmp += "<Port>" + PortName + "</Port>";
-                }
-                if (BaudRate != 9600)
-                {
-                    tmp += "<Bps>" + BaudRate + "</Bps>";
-                }
-                if (this.StopBits != System.IO.Ports.StopBits.None)
-                {
-                    tmp += "<StopBits>" + (int)StopBits + "</StopBits>";
-                }
-                if (this.Parity != System.IO.Ports.Parity.None)
-                {
-                    tmp += "<Parity>" + (int)Parity + "</Parity>";
-                }
-                if (this.DataBits != 8)
-                {
-                    tmp += "<ByteSize>" + DataBits + "</ByteSize>";
-                }
-                if (this.InitializeCommands != null)
-                {
-                    tmp += "<Init>" + string.Join(";", this.InitializeCommands) + "</Init>";
-                }
-                return tmp;
-            }
-            set
-            {
-                if (!string.IsNullOrEmpty(value))
-                {
-                    XmlReaderSettings settings = new XmlReaderSettings();
-                    settings.ConformanceLevel = ConformanceLevel.Fragment;
-                    string str;
-                    int result;
-                    using (XmlReader xmlReader = XmlReader.Create(new System.IO.StringReader(value), settings))
-                    {
-                        while (xmlReader.Read())
-                        {
-                            if (xmlReader.IsStartElement())
-                            {
-                                switch (xmlReader.Name)
-                                {
-                                    case "Init":
-                                        InitializeCommands = xmlReader.ReadString().Split(new char[] { ';' });
-                                        break;
-                                    case "PIN":
-                                        PIN = xmlReader.ReadString();
-                                        break;
-                                    case "Number":
-                                        PhoneNumber = xmlReader.ReadString();
-                                        break;
-                                    case "Interval":
-                                        SMSCheckInterval = Convert.ToInt32(xmlReader.ReadString());
-                                        break;
-                                    case "Port":
-                                        PortName = xmlReader.ReadString();
-                                        break;
-                                    case "Bps":
-                                        BaudRate = Convert.ToInt32(xmlReader.ReadString());
-                                        break;
-                                    case "StopBits":
-                                        str = xmlReader.ReadString();
-                                        if (int.TryParse(str, out result))
-                                        {
-                                            StopBits = (StopBits)result;
-                                        }
-                                        else
-                                        {
-                                            StopBits = (StopBits)Enum.Parse(typeof(StopBits), str);
-                                        }
-
-                                        break;
-                                    case "Parity":
-                                        str = xmlReader.ReadString();
-                                        if (int.TryParse(str, out result))
-                                        {
-                                            Parity = (Parity)result;
-                                        }
-                                        else
-                                        {
-                                            Parity = (Parity)Enum.Parse(typeof(System.IO.Ports.Parity), str);
-                                        }
-                                        break;
-                                    case "ByteSize":
-                                        DataBits = Convert.ToInt32(xmlReader.ReadString());
-                                        break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Current SMS settings as a string.
-        /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.Append(PortName);
-            sb.Append(' ');
-            sb.Append(BaudRate);
-            sb.Append(' ');
-            sb.Append(DataBits);
-            sb.Append(Parity);
-            sb.Append((int)StopBits);
-            sb.Append(" PIN:");
-            sb.Append(PIN);
-            sb.Append(" Number:");
-            sb.Append(PhoneNumber);
-            sb.Append(" Interval:");
-            sb.Append(SMSCheckInterval);
-            return sb.ToString();
-        }
-
-        string Gurux.Common.IGXMedia.MediaType
-        {
-            get
-            {
-                return "SMS";
-            }
-        }
-
-        bool Gurux.Common.IGXMedia.Enabled
-        {
-            get
-            {
-                return GetPortNames().Length != 0;
-            }
-        }
-
-        string Gurux.Common.IGXMedia.Name
-        {
-            get
-            {
-                return this.PortName;
-            }
-        }
-
-#if NET462_OR_GREATER || WINDOWS
-        /// <summary>
-        /// Shows the serial port Properties dialog.
-        /// </summary>
-        /// <param name="parent">Owner window of the Properties dialog.</param>
-        /// <returns>True, if the user has accepted the changes.</returns>
-        /// <seealso cref="PortName">PortName</seealso>
-        /// <seealso cref="BaudRate">BaudRate</seealso>
-        /// <seealso cref="DataBits">DataBits</seealso>
-        /// <seealso href="PropertiesDialog.html">Properties Dialog</seealso>
-        public bool Properties(System.Windows.Forms.Form parent)
-        {
-            return new Gurux.Shared.PropertiesForm(PropertiesForm, Gurux.SMS.Properties.Resources.SettingsTxt, IsOpen,
-                Gurux.SMS.Properties.Resources.OK, Gurux.SMS.Properties.Resources.Cancel, 
-                "https://www.gurux.fi/GXSMSProperties").ShowDialog(parent) == System.Windows.Forms.DialogResult.OK;
-        }
-
-        /// <summary>
-        /// Returns a new instance of the Settings form.
-        /// </summary>
-        public System.Windows.Forms.Form PropertiesForm
-        {
-            get
-            {
-                return new Settings(this);
-            }
-        }
-
-#endif //NET462_OR_GREATER || WINDOWS
-        /// <summary>
-        /// Sends SMS message asynchronously. <br/>
-        /// No reply from the receiver, whether or not the operation was successful, is expected.
-        /// </summary>
-        public void Send(GXSMSMessage message)
-        {
-            ((Gurux.Common.IGXMedia)this).Send(message, null);
-        }
-
-        /// <summary>
-        /// Wait new message.
-        /// </summary>
-        /// <param name="waittime"></param>
-        /// <returns></returns>
-        public GXSMSMessage Receive(int waittime)
-        {
-            if (!m_SMSReceived.WaitOne(waittime * 1000))
-            {
-                return null;
-            }
-            return SyncMessage;
-        }
-
-        void SendMessage(string message, string receiver, MessageCodeType type)
-        {
-            if (string.IsNullOrEmpty(receiver))
-            {
-                throw new ArgumentException("Invalid receiver");
-            }
-            //Remove spaces.
-            receiver = receiver.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", "").Trim();
-            //Send EOF
-            SendBytes(new byte[] { 26 });
-            //Code PDU.
-            string data = GXSMSPdu.Code(receiver, message, type);
-            long len = (data.Length / 2) - 1;
-            string cmd;
-            if (!SupportDirectSend)//Save SMS before send.
-            {
-                cmd = string.Format("AT+CMGW={0}\r", len);
-            }
-            else
-            {
-                cmd = string.Format("AT+CMGS={0}\r", len);
-            }
-            string reply = SendCommand(cmd, new string(new char[] { (char)0x20 }), false);
-            if (reply != ">")
-            {
-                throw new Exception("Short message send failed.");
-            }
-            reply = SendCommand(data, "", false);
-            //Send EOF
-            reply = SendCommand(ASCIIEncoding.ASCII.GetString(new byte[] { 26 }), false);
-            if (!SupportDirectSend)//Save SMS before send.
-            {
-                if (!reply.StartsWith("+CMGW:"))
-                {
-                    throw new Exception("Short message send failed.\r\n" + GetError(reply));
-                }
-            }
-            else
-            {
-                if (!reply.StartsWith("+CMGS:"))
-                {
-                    throw new Exception("Short message send failed.\r\n" + GetError(reply));
-                }
-            }
-        }
-
-        /// <inheritdoc cref="IGXMedia.Receive"/>
-        public bool Receive<T>(Gurux.Common.ReceiveParameters<T> args)
-        {
-            if (!IsOpen)
-            {
-                throw new InvalidOperationException("Media is closed.");
-            }
-            return m_syncBase.Receive(args);
-        }
-
-
-        void Gurux.Common.IGXMedia.Send(object data, string receiver)
-        {
-            if (data is GXSMSMessage)
-            {
-                GXSMSMessage msg = data as GXSMSMessage;
-                lock (m_baseLock)
-                {
-                    if (m_Trace == TraceLevel.Verbose && m_OnTrace != null)
-                    {
-                        m_OnTrace(this, new TraceEventArgs(TraceTypes.Sent, msg.PhoneNumber + " : " + msg.Data, null));
-                    }
-                    //Reset last position if Eop is used.
-                    lock (m_syncBase.receivedSync)
-                    {
-                        m_syncBase.lastPosition = 0;
-                    }
-                    //Use default phone number if new is not set.
-                    string number = m_PhoneNumber;
-                    if (!string.IsNullOrEmpty(msg.PhoneNumber))
-                    {
-                        number = msg.PhoneNumber;
-                    }
-                    if (string.IsNullOrEmpty(number))
-                    {
-                        throw new ArgumentException("Invalid phone number.");
-                    }
-                    SendMessage(msg.Data, number, msg.CodeType);
-                }
-            }
-            else if (data is string)
-            {
-
-            }
-            else
-            {
-                throw new ArgumentException("Invalid data to send");
-            }
+            await ExecuteCommandAsync("AT+CPIN=\"" + PIN + "\"", cancellationToken).ConfigureAwait(false);
         }
 
-        void Gurux.Common.IGXMedia.Validate()
-        {
-
-        }
+        await ExecuteCommandAsync("AT+CMGF=0", cancellationToken).ConfigureAwait(false);
+    }
 
-        int Gurux.Common.IGXMedia.ConfigurableSettings
+    /// <summary>Submits SMS through Android telephony or the modem prompt exchange when sending is enabled.</summary>
+    /// <param name="recipient">The destination telephone number, optionally prefixed with a plus sign.</param>
+    /// <param name="text">The message text to encode using <see cref="CodeType"/>.</param>
+    /// <param name="cancellationToken">Cancels the pending operation.</param>
+    /// <returns>The modem response or native submission acknowledgement; recipient delivery is not guaranteed.</returns>
+    /// <exception cref="InvalidOperationException">Sending is disabled or the component is closed.</exception>
+    /// <exception cref="UnauthorizedAccessException">Android SMS sending permission has not been granted or has been revoked.</exception>
+    /// <exception cref="TimeoutException">Android does not acknowledge submission within <see cref="GXTerminal.ConnectTimeout"/>.</exception>
+    /// <exception cref="ArgumentException">The recipient or message cannot be encoded using the selected alphabet.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The alphabet is unsupported or the encoded message exceeds the single-message limit.</exception>
+    /// <exception cref="IOException">The modem rejects the submission or its response exceeds the supported limit.</exception>
+    /// <exception cref="OperationCanceledException">Cancellation, a command timeout or transport shutdown interrupts submission.</exception>
+    public Task<string> SendMessageAsync(string recipient, string text, CancellationToken cancellationToken = default)
+    {
+        RequireOperation(true);
+        if (UsesNativeSms) { return SendNativeAsync(recipient, text, cancellationToken); }
+        string pdu = SmsPdu.EncodeSubmit(recipient, text, CodeType);
+        return ExecutePromptAsync("AT+CMGS=" + (pdu.Length / 2 - 1), Encoding.ASCII.GetBytes(pdu + "\u001a"), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public override async ValueTask SendAsync(ReadOnlyMemory<byte> data, string? receiver = null, CancellationToken cancellationToken = default) => await SendMessageAsync(receiver ?? PhoneNumber, Encoding.UTF8.GetString(data.Span), cancellationToken).ConfigureAwait(false);
+    /// <summary>Reads a received modem message, or a message retained during the current native session.</summary>
+    /// <param name="index">The nonnegative modem storage index or current native session index.</param>
+    /// <param name="cancellationToken">Cancels the pending operation.</param>
+    /// <returns>The decoded message with its modem storage or native session index.</returns>
+    /// <exception cref="InvalidOperationException">Reception is disabled or the component is closed.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The storage index is negative.</exception>
+    /// <exception cref="IOException">The modem reports an error or returns no message PDU.</exception>
+    /// <exception cref="FormatException">The returned PDU is malformed or truncated.</exception>
+    /// <exception cref="NotSupportedException">The PDU type or coding scheme is unsupported.</exception>
+    /// <exception cref="OperationCanceledException">Cancellation, a command timeout or transport shutdown interrupts the read.</exception>
+    public async Task<GXSMSMessage> ReadMessageAsync(int index, CancellationToken cancellationToken = default)
+    {
+        RequireOperation(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (index < 0)
         {
-            get;
-            set;
+            throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-#if NET462_OR_GREATER || WINDOWS
-        void OnAsyncStateChange(object sender, GXAsyncWork work, object[] parameters, AsyncState state, string text)
-        {
-            try
-            {
-                if (state == AsyncState.Cancel)
-                {
-                    m_base.DiscardOutBuffer();
-                    m_base.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Windows.Forms.MessageBox.Show(ex.Message);
-            }
-        }
-        void TestAsync(object sender, GXAsyncWork work, object[] parameters)
+        if (UsesNativeSms)
         {
-            lock (m_baseLock)
-            {
-                m_base.Open();
-                m_base.WriteTimeout = m_ConnectionWaitTime;
-                m_base.DtrEnable = m_base.RtsEnable = true;
-            }
-            try
-            {
-                //Send AT
-                lock (m_baseLock)
-                {
-                    if (string.Compare(SendCommand("AT\r", false), "OK", false) == 0)
-                    {
-                        work.Result = true;
-                        return;
-                    }
-                }
-            }
-            //If connection is closed by user.
-            catch (System.IO.IOException)
-            {
-                work.Result = false;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
-            }
-            finally
-            {
-                lock (m_baseLock)
-                {
-                    if (m_base.IsOpen)
-                    {
-                        m_base.Close();
-                    }
-                }
-            }
-            work.Result = false;
+            return RequireNativeSession().Snapshot().FirstOrDefault(message => message.Index == index)
+                ?? throw new ArgumentOutOfRangeException(nameof(index));
         }
+        string response = await ExecuteCommandAsync("AT+CMGR=" + index, cancellationToken).ConfigureAwait(false);
+        string pdu = response.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(line => line.Length > 0 && line.Length % 2 == 0 && line.All(Uri.IsHexDigit)) ?? throw new IOException(global::Gurux.SMS.Properties.Resources.Get("TheModemDidNotReturnAMessagePDU"));
+        var message = SmsPdu.DecodeDeliver(pdu);
+        message.Index = index;
+        return message;
+    }
 
-        /// <summary>
-        /// Test is modem available
-        /// </summary>
-        /// <returns></returns>
-        public bool Test(System.Windows.Forms.Form parent)
+    /// <summary>Lists received modem messages or the last 128 messages received during the current native session.</summary>
+    /// <remarks>Native listing never reads or changes the Android device inbox and requires no READ_SMS permission.</remarks>
+    /// <param name="cancellationToken">Cancels the pending operation.</param>
+    /// <returns>The incoming modem messages or bounded snapshot of this native session's received messages.</returns>
+    /// <exception cref="InvalidOperationException">Reception is disabled or the component is closed.</exception>
+    /// <exception cref="IOException">The modem reports an error or returns a malformed message listing.</exception>
+    /// <exception cref="FormatException">An incoming message PDU is malformed or truncated.</exception>
+    /// <exception cref="NotSupportedException">An incoming message PDU uses an unsupported type or coding scheme.</exception>
+    /// <exception cref="OperationCanceledException">Cancellation, a command timeout or transport shutdown interrupts the listing.</exception>
+    public async Task<IReadOnlyList<GXSMSMessage>> ListMessagesAsync(CancellationToken cancellationToken = default)
+    {
+        RequireOperation(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (UsesNativeSms) { return RequireNativeSession().Snapshot(); }
+        string response = await ExecuteCommandAsync("AT+CMGL=4,1", cancellationToken).ConfigureAwait(false);
+        string[] lines = response.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        var messages = new List<GXSMSMessage>();
+        for (int i = 0; i < lines.Length; i++)
         {
-            try
-            {
-                GXSMSAsyncWorkForm dlg2 = new GXSMSAsyncWorkForm();
-                GXSMSAsyncWorkForm dlg = new GXSMSAsyncWorkForm();
-                dlg.Text = dlg.ConnectingLbl.Text = "Checking modem.";
-                GXAsyncWork work = new GXAsyncWork(dlg, OnAsyncStateChange,
-                    TestAsync, null, "Checking is modem available.", null);
-                work.Start();
-                work.Wait(m_ConnectionWaitTime);
-                //If we try to check from the COM port where is no modem thread is locked.
-                if (work.Result == null)
-                {
-                    return false;
-                }
-                return (bool)work.Result;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex.Message);
-                return false;
-            }
-            finally
+            if (!lines[i].StartsWith("+CMGL:", StringComparison.Ordinal))
             {
-                if (ConnectingForm != null)
-                {
-                    ConnectingForm.Close();
-                    ConnectingForm = null;
-                }
+                continue;
             }
-        }
-#endif //NET462_OR_GREATER || WINDOWS
-
-        /// <summary>
-        /// Are messages removed after read from the SIM or phone memory.
-        /// </summary>
-        /// <remarks>
-        /// Default is false.
-        /// </remarks>
-        public bool AutoDelete
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// Used memory type. Default value is MemoryType.Sim.
-        /// </summary>
-        /// <remarks>
-        /// Default is false.
-        /// </remarks>
-        public MemoryType Memory
-        {
-            get;
-            set;
-        }
 
-        string DeleteMessage(int index)
-        {
-            string reply = SendCommand(string.Format("AT+CMGD={0}\r", index), false);
-            return reply;
-        }
-
-        /// <summary>
-        /// Delete SMS from the selected index.
-        /// </summary>
-        /// <returns></returns>
-        public void Delete(int index)
-        {
-            string reply = DeleteMessage(index);
-            if (reply != "OK")
+            string[] fields = lines[i][6..].Split(',');
+            if (fields.Length < 2 || !int.TryParse(fields[0].Trim(), out int index) || index < 0 || !int.TryParse(fields[1].Trim(), out int status))
             {
-                throw new Exception(string.Format("Delete failed from index {0}.\r\n{1}", index, reply));
+                throw new IOException(global::Gurux.SMS.Properties.Resources.Get("InvalidCMGLMessageHeader"));
             }
-        }
 
-        /// <summary>
-        /// Delete ALL SMS from the phone.
-        /// </summary>
-        /// <returns></returns>
-        public void DeleteAll()
-        {
-            int count, maximum;
-            GetMemoryCapacity(out count, out maximum);
-            //If there are no messages to remove.
-            if (count == 0)
-            {
-                return;
-            }
-            lock (m_baseLock)
+            if (++i >= lines.Length)
             {
-                for (int pos = 1; pos != maximum + 1; ++pos)
-                {
-                    string reply = DeleteMessage(pos);
-                    if (reply != "OK")
-                    {
-                        throw new Exception(string.Format("Delete failed from index {0}.\r\n{1}", pos, reply));
-                    }
-                }
+                throw new IOException(global::Gurux.SMS.Properties.Resources.Get("CMGLHeaderHasNoMessagePDU"));
             }
-        }
 
-        /// <summary>
-        /// Read all messages from the selected memory.
-        /// </summary>
-        /// <returns></returns>
-        public GXSMSMessage[] Read()
-        {
-            int count, maximum;
-            GetMemoryCapacity(out count, out maximum);
-            //If there are no messages to read.
-            if (count == 0)
+            if (status is not (0 or 1))
             {
-                return new GXSMSMessage[0];
-            }
-            List<GXSMSMessage> messages = new List<GXSMSMessage>();
-            lock (m_baseLock)
-            {
-                for (int pos = 1; pos != maximum + 1; ++pos)
-                {
-                    string reply = SendCommand(string.Format("AT+CMGR={0}\r", pos), false);
-                    if (reply.StartsWith("+CMGR:"))
-                    {
-                        reply = reply.Remove(0, 6);
-                        string[] tmp = reply.Split(new char[] { ',' });
-                        GXSMSMessage msg = new GXSMSMessage();
-                        msg.Index = pos;
-                        string status = tmp[0].Replace("\"", "").Trim();
-                        if (status.StartsWith("STO"))
-                        {
-                            if (status.Contains("UNSENT"))
-                            {
-                                msg.Status = MessageStatus.Unsent;
-                            }
-                            else if (status.Contains("UNREAD"))
-                            {
-                                msg.Status = MessageStatus.Unread;
-                            }
-                            else if (status.Contains("Read"))
-                            {
-                                msg.Status = MessageStatus.Read;
-                            }
-                            else if (status.Contains("Sent"))
-                            {
-                                msg.Status = MessageStatus.Sent;
-                            }
-                        }
-                        else
-                        {
-                            msg.Status = (MessageStatus)int.Parse(status);
-                        }
-                        //If this is not a empty message
-                        if (tmp.Length != 1)
-                        {
-                            string[] m = tmp[2].Split(new string[] { "\r\n" }, StringSplitOptions.None);
-                            if (m.Length != 2)
-                            {
-                                continue;
-                            }
-                            GXSMSPdu.Encode(m[1], msg);
-                            //If this message is not read yet.
-                            if (msg.Status == MessageStatus.Unread && msg.PhoneNumber == "")
-                            {
-                                continue;
-                            }
-                        }
-                        messages.Add(msg);
-                        //If all messages are read.
-                        if (messages.Count == count)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-            return messages.ToArray();
-        }
+                continue;
+            } // Stored outgoing SMS-SUBMIT records are not incoming messages.
 
-        /// <summary>
-        /// Returns used and maximum SMS capacity.
-        /// </summary>
-        /// <param name="count">SMS in memory</param>
-        /// <param name="maximum">Maximum SMS count.</param>
-        /// <returns></returns>
-        public void GetMemoryCapacity(out int count, out int maximum)
-        {
-            lock (m_baseLock)
-            {
-                string reply = SendCommand("AT+CPMS?\r", false);
-                //for read/delete", "for write/send" , "for receive
-                //"SM": SIM message store
-                //"ME": ME message store
-                //"MT": any of the storages associated with ME
-                if (reply.StartsWith("ERROR:"))
-                {
-                    throw new Exception("ReadSMSCapacity failed.\r\n" + GetError(reply));
-                }
-                int ret = reply.LastIndexOf("\"SM\",");
-                if (ret == -1)
-                {
-                    throw new Exception("ReadSMSCapacity failed.");
-                }
-                string[] results = reply.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                if (results.Length != 9)
-                {
-                    throw new Exception("ReadSMSCapacity failed.");
-                }
-                count = int.Parse(results[1]);
-                maximum = int.Parse(results[2]);
-            }
+            var message = SmsPdu.DecodeDeliver(lines[i].Trim());
+            message.Index = index;
+            message.Status = (MessageStatus)status;
+            messages.Add(message);
         }
-
-        /// <summary>
-        /// Returns network state.
-        /// </summary>
-        /// <returns></returns>
-        public NetworkState GetNetworkState()
-        {
-            lock (m_baseLock)
-            {
-                string reply = SendCommand("AT+CREG=?\r", false);
-                if (reply.StartsWith("ERROR"))
-                {
-                    return NetworkState.Denied;
-                }
-                reply = SendCommand("AT+CREG?\r", false);
-                if (reply.StartsWith("ERROR:"))
-                {
-                    throw new Exception("GetNetworkState failed:\r\n" + GetError(reply));
-                }
 
-                int ret = reply.LastIndexOf("+CREG:");
-                if (ret == -1)
-                {
-                    throw new Exception("GetNetworkState failed.");
-                }
-                string[] results = reply.Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries);
-                if (results.Length != 3)
-                {
-                    throw new Exception("GetSignalQuality failed.");
-                }
-                return (NetworkState)int.Parse(results[2]);
-            }
-        }
+        return messages;
+    }
 
-        /// <summary>
-        /// Returns received signal strength indication (RSSI) and channel bit error rate (BER).
-        /// </summary>
-        /// <param name="rssi">Received Signal Strength Indication</param>
-        /// <param name="ber">Bit Error Rate</param>
-        public void GetSignalQuality(out int rssi, out int ber)
+    /// <summary>Watches native incoming SMS, or polls the modem while suppressing unchanged stored messages per watcher.</summary>
+    /// <remarks>There is no background worker or deletion. Modem state is bounded by its inbox. Native watchers
+    /// replay up to 128 retained messages and then receive live broadcasts until cancellation or component close.</remarks>
+    /// <param name="pollInterval">The interval between modem inbox queries, or null for five seconds; native reception does not poll.</param>
+    /// <param name="cancellationToken">Cancels the pending operation.</param>
+    /// <returns>Native incoming messages or modem messages whose index and PDU have changed since the previous poll.</returns>
+    /// <exception cref="InvalidOperationException">Reception is disabled or the component is closed.</exception>
+    /// <exception cref="IOException">A native watcher falls behind by more than its bounded queue capacity.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The polling interval is not positive.</exception>
+    /// <exception cref="OperationCanceledException">Cancellation, a command timeout or transport shutdown interrupts polling.</exception>
+    public async IAsyncEnumerable<GXSMSMessage> WatchMessagesAsync(TimeSpan? pollInterval = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        RequireOperation(false);
+        TimeSpan interval = pollInterval ?? TimeSpan.FromSeconds(5);
+        if (interval <= TimeSpan.Zero)
         {
-            rssi = ber = 0;
-            lock (m_baseLock)
-            {
-                //If modem don't support this.
-                string reply = SendCommand("AT+CSQ=?\r", false);
-                if (reply.StartsWith("ERROR"))
-                {
-                    return;
-                }
-                reply = SendCommand("AT+CSQ\r", false);
-                if (reply.Contains("ERROR:"))
-                {
-                    throw new Exception("GetSignalQuality failed:\r\n" + GetError(reply));
-                }
-
-                int ret = reply.LastIndexOf("CSQ:");
-                if (ret == -1)
-                {
-                    throw new Exception("GetSignalQuality failed.");
-                }
-                string[] results = reply.Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries);
-                if (results.Length != 3)
-                {
-                    throw new Exception("GetSignalQuality failed.");
-                }
-                rssi = int.Parse(results[1]);
-                ber = int.Parse(results[2]);
-            }
+            throw new ArgumentOutOfRangeException(nameof(pollInterval));
         }
 
-        /// <summary>
-        /// Returns battery charge level and avarage power consumption.
-        /// </summary>
-        /// <remarks>
-        /// Battery capacity 0, 20, 40, 60, 80, 100 percent of remaining capacity (6 steps)
-        /// 0 indicates that either the battery is exhausted or the capacity value is not available.
-        /// Average power consumption i mA.
-        /// </remarks>
-        /// <param name="batteryCapacity"></param>
-        /// <param name="averagePowerConsumption"></param>
-        public void GetBatteryCharge(out int batteryCapacity, out int averagePowerConsumption)
+        if (UsesNativeSms)
         {
-            batteryCapacity = averagePowerConsumption = 0;
-            lock (m_baseLock)
+            await foreach (var message in RequireNativeSession().WatchAsync(cancellationToken).ConfigureAwait(false))
             {
-                //If modem don't support this.
-                string reply = SendCommand("AT^SBC=?\r", false);
-                if (reply.StartsWith("ERROR"))
-                {
-                    return;
-                }
-                reply = SendCommand("AT^SBC?\r", false);
-                if (reply == "")
-                {
-                    throw new Exception("GetBatteryCharge failed.");
-                }
-
-                int ret = reply.LastIndexOf("SBC:");
-                if (ret == -1)
-                {
-                    throw new Exception("GetBatteryCharge failed.");
-                }
-                string[] results = reply.Split(new char[] { ',', ':' }, StringSplitOptions.RemoveEmptyEntries);
-                if (results.Length != 4)
-                {
-                    throw new Exception("GetBatteryCharge failed.");
-                }
-                batteryCapacity = int.Parse(results[2]);
-                averagePowerConsumption = int.Parse(results[3]);
+                yield return message;
             }
+            yield break;
         }
 
-        /// <summary>
-        /// Return all available information from the modem.
-        /// </summary>
-        /// <returns></returns>
-        public string[] GetInfo()
+        var previous = new HashSet<(int Index, string Pdu)>();
+        while (true)
         {
-            List<string> info = new List<string>();
-            lock (m_baseLock)
+            cancellationToken.ThrowIfCancellationRequested();
+            var messages = await ListMessagesAsync(cancellationToken).ConfigureAwait(false);
+            var current = new HashSet<(int Index, string Pdu)>();
+            foreach (var message in messages)
             {
-                //Get manufacturer.
-                string reply = SendCommand("AT+CGMI\r", false);
-                if (!reply.StartsWith("ERROR:"))
-                {
-                    info.Add("Manufacturer: " + reply);
-                }
-                else
-                {
-                    info.Add("Manufacturer: Unknown");
-                }
-                //Get Model.
-                reply = SendCommand("AT+CGMM\r", false);
-                if (!reply.StartsWith("ERROR:"))
-                {
-                    info.Add("Model: " + reply);
-                }
-                else
-                {
-                    info.Add("Model: Unknown");
-                }
-                //Get supported features.
-                reply = SendCommand("AT+GCAP\r", false);
-                if (!reply.StartsWith("ERROR:"))
+                cancellationToken.ThrowIfCancellationRequested();
+                var key = (message.Index, message.Pdu);
+                current.Add(key);
+                if (!previous.Contains(key))
                 {
-                    info.Add("Features: " + reply);
+                    yield return message;
                 }
-                //Serial port speed.
-                reply = SendCommand("AT+IPR?\r", false);
-                int pos = reply.IndexOf("+IPR:");
-                if (pos != -1)
-                {
-                    info.Add("Serial port speed: " + reply.Substring(pos + 5));
-                }
             }
-            return info.ToArray();
-        }
-
-        /// <summary>
-        /// Amount of sent messages.
-        /// </summary>
-        public int MessagesSent
-        {
-            get;
-            private set;
-        }
-
-        /// <summary>
-        /// Amount of received messages.
-        /// </summary>
-        public int MessagesReceived
-        {
-            get;
-            private set;
-        }
-
-        /// <summary>
-        /// Resets sent and received message counters.
-        /// </summary>
-        public void ResetMessageCounters()
-        {
-            MessagesSent = MessagesReceived = 0;
-        }
 
-        /// <summary>
-        /// Returns the amount of pending short messages.
-        /// </summary>
-        /// <returns></returns>
-        public int GetPendingMessageCount()
-        {
-            throw new NotImplementedException();
+            previous = current;
+            await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
         }
-
-        #endregion
+    }
 
-        #region IDisposable Members
-
-        /// <summary>
-        /// Closes the connection.
-        /// </summary>
-        public void Dispose()
+    /// <summary>Explicitly deletes the message stored at the specified modem index.</summary>
+    /// <param name="index">The nonnegative storage index assigned by the modem.</param>
+    /// <param name="cancellationToken">Cancels the pending operation.</param>
+    /// <returns>The modem deletion response.</returns>
+    /// <exception cref="NotSupportedException">This instance uses native Android SMS; device inbox deletion is not supported.</exception>
+    /// <exception cref="InvalidOperationException">Reception is disabled.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The storage index is negative.</exception>
+    /// <exception cref="IOException">The modem reports a deletion failure.</exception>
+    /// <exception cref="OperationCanceledException">Cancellation, a command timeout or transport shutdown interrupts deletion.</exception>
+    public Task<string> DeleteMessageAsync(int index, CancellationToken cancellationToken = default)
+    {
+        RequireOperation(false);
+        if (UsesNativeSms) { throw new NotSupportedException(global::Gurux.SMS.Properties.Resources.Get("SmsNativeDeleteUnsupported")); }
+        if (index < 0)
         {
-            if (this.IsOpen)
-            {
-                Close();
-            }
+            throw new ArgumentOutOfRangeException(nameof(index));
         }
 
-        #endregion
+        return ExecuteCommandAsync("AT+CMGD=" + index, cancellationToken);
     }
 }

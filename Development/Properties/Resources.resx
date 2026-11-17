@@ -1,122 +1,71 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
-  <!-- 
-    Microsoft ResX Schema 
-    
-    Version 2.0
-    
-    The primary goals of this format is to allow a simple XML format 
-    that is mostly human readable. The generation and parsing of the 
-    various data types are done through the TypeConverter classes 
-    associated with the data types.
-    
-    Example:
-    
-    ... ado.net/XML headers & schema ...
-    <resheader name="resmimetype">text/microsoft-resx</resheader>
-    <resheader name="version">2.0</resheader>
-    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
-    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
-    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
-    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
-    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
-        <value>[base64 mime encoded serialized .NET Framework object]</value>
-    </data>
-    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
-        <comment>This is a comment</comment>
-    </data>
-                
-    There are any number of "resheader" rows that contain simple 
-    name/value pairs.
-    
-    Each data row contains a name, and value. The row also contains a 
-    type or mimetype. Type corresponds to a .NET class that support 
-    text/value conversion through the TypeConverter architecture. 
-    Classes that don't support this are serialized and stored with the 
-    mimetype set.
-    
-    The mimetype is used for serialized objects, and tells the 
-    ResXResourceReader how to depersist the object. This is currently not 
-    extensible. For a given mimetype the value must be set accordingly:
-    
-    Note - application/x-microsoft.net.object.binary.base64 is the format 
-    that the ResXResourceWriter will generate, however the reader can 
-    read any of the formats listed below.
-    
-    mimetype: application/x-microsoft.net.object.binary.base64
-    value   : The object must be serialized with 
-            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
-            : and then encoded with base64 encoding.
-    
-    mimetype: application/x-microsoft.net.object.soap.base64
-    value   : The object must be serialized with 
-            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
-            : and then encoded with base64 encoding.
-
-    mimetype: application/x-microsoft.net.object.bytearray.base64
-    value   : The object must be serialized into a byte array 
-            : using a System.ComponentModel.TypeConverter
-            : and then encoded with base64 encoding.
-    -->
-  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
-    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
-    <xsd:element name="root" msdata:IsDataSet="true">
-      <xsd:complexType>
-        <xsd:choice maxOccurs="unbounded">
-          <xsd:element name="metadata">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" />
-              </xsd:sequence>
-              <xsd:attribute name="name" use="required" type="xsd:string" />
-              <xsd:attribute name="type" type="xsd:string" />
-              <xsd:attribute name="mimetype" type="xsd:string" />
-              <xsd:attribute ref="xml:space" />
-            </xsd:complexType>
-          </xsd:element>
-          <xsd:element name="assembly">
-            <xsd:complexType>
-              <xsd:attribute name="alias" type="xsd:string" />
-              <xsd:attribute name="name" type="xsd:string" />
-            </xsd:complexType>
-          </xsd:element>
-          <xsd:element name="data">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
-              </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
-              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
-              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
-              <xsd:attribute ref="xml:space" />
-            </xsd:complexType>
-          </xsd:element>
-          <xsd:element name="resheader">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-              </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" use="required" />
-            </xsd:complexType>
-          </xsd:element>
-        </xsd:choice>
-      </xsd:complexType>
-    </xsd:element>
-  </xsd:schema>
-  <resheader name="resmimetype">
-    <value>text/microsoft-resx</value>
-  </resheader>
-  <resheader name="version">
-    <value>2.0</value>
-  </resheader>
-  <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </resheader>
-  <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </resheader>
+  <data name="AnSMSRecipientMustContain1To20Digits" xml:space="preserve">
+    <value>An SMS recipient must contain 1 to 20 digits.</value>
+  </data>
+  <data name="CharacterCannotBeRepresentedInGSM7BitSelectUnicode" xml:space="preserve">
+    <value>Character cannot be represented in GSM 7-bit; select Unicode.</value>
+  </data>
+  <data name="ASingleSMSPermits160GSMSeptets" xml:space="preserve">
+    <value>A single SMS permits 160 GSM septets.</value>
+  </data>
+  <data name="SMSUCS2CannotEncodeSurrogateCharacters" xml:space="preserve">
+    <value>SMS UCS-2 cannot encode surrogate characters.</value>
+  </data>
+  <data name="8BitMessagesRequireCharactersInTheByteRange" xml:space="preserve">
+    <value>8-bit messages require characters in the byte range.</value>
+  </data>
+  <data name="ASingleSMSPermits140OctetsSplitLongerMessagesExplicitly" xml:space="preserve">
+    <value>A single SMS permits 140 octets; split longer messages explicitly.</value>
+  </data>
+  <data name="TruncatedSMSPDU" xml:space="preserve">
+    <value>Truncated SMS PDU.</value>
+  </data>
+  <data name="InvalidAddressLength" xml:space="preserve">
+    <value>Invalid address length.</value>
+  </data>
+  <data name="TruncatedGSMSeptets" xml:space="preserve">
+    <value>Truncated GSM septets.</value>
+  </data>
+  <data name="IncompleteGSMExtensionEscape" xml:space="preserve">
+    <value>Incomplete GSM extension escape.</value>
+  </data>
+  <data name="OnlySMSDELIVERPDUsAreSupported" xml:space="preserve">
+    <value>Only SMS-DELIVER PDUs are supported.</value>
+  </data>
+  <data name="CompressedOrMessageClassSMSCodingIsNotSupported" xml:space="preserve">
+    <value>Compressed or message-class SMS coding is not supported.</value>
+  </data>
+  <data name="UnsupportedSMSCoding" xml:space="preserve">
+    <value>Unsupported SMS coding.</value>
+  </data>
+  <data name="InvalidSMSTimestamp" xml:space="preserve">
+    <value>Invalid SMS timestamp.</value>
+  </data>
+  <data name="InvalidSMSUserDataHeader" xml:space="preserve">
+    <value>Invalid SMS user data header.</value>
+  </data>
+  <data name="InvalidGSMUserDataLength" xml:space="preserve">
+    <value>Invalid GSM user data length.</value>
+  </data>
+  <data name="InvalidUCS2Length" xml:space="preserve">
+    <value>Invalid UCS-2 length.</value>
+  </data>
+  <data name="InvalidSMSSettings" xml:space="preserve">
+    <value>Invalid SMS settings.</value>
+  </data>
+  <data name="PINMustContain4To8Digits" xml:space="preserve">
+    <value>PIN must contain 4 to 8 digits.</value>
+  </data>
+  <data name="TheModemDidNotReturnAMessagePDU" xml:space="preserve">
+    <value>The modem did not return a message PDU.</value>
+  </data>
+  <data name="InvalidCMGLMessageHeader" xml:space="preserve">
+    <value>Invalid CMGL message header.</value>
+  </data>
+  <data name="CMGLHeaderHasNoMessagePDU" xml:space="preserve">
+    <value>CMGL header has no message PDU.</value>
+  </data>
   <data name="PortNameTxt" xml:space="preserve">
     <value>Port Name:</value>
   </data>
@@ -138,13 +87,6 @@
   <data name="StopBitsTxt" xml:space="preserve">
     <value>Stop Bits</value>
   </data>
-  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="gxsmsLB" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\gxsmsLB.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="gxsms" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\gxsms.bmp;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="SMSCheckIntervalTxt" xml:space="preserve">
     <value>Check Interval</value>
   </data>
@@ -154,4 +96,18 @@
   <data name="OK" xml:space="preserve">
     <value>OK</value>
   </data>
+  <data name="SmsSendingDisabled" xml:space="preserve"><value>Sending SMS is disabled in the selected mode.</value></data>
+  <data name="SmsReceivingDisabled" xml:space="preserve"><value>Receiving SMS is disabled in the selected mode.</value></data>
+  <data name="SmsMediaClosed" xml:space="preserve"><value>Open the SMS component before using native SMS operations.</value></data>
+  <data name="SmsRecipientAndTextRequired" xml:space="preserve"><value>An SMS recipient and nonempty message text are required.</value></data>
+  <data name="SmsNativeDeleteUnsupported" xml:space="preserve"><value>Deleting messages from the Android device inbox is not supported.</value></data>
+  <data name="SmsWatcherOverflow" xml:space="preserve"><value>The SMS watcher could not keep up with incoming messages. Restart the watcher.</value></data>
+  <data name="SmsPermissionRequired" xml:space="preserve"><value>The selected SMS mode requires Android permission {0}.</value></data>
+  <data name="SmsServiceUnavailable" xml:space="preserve"><value>This device does not provide an SMS service.</value></data>
+  <data name="SmsSubmitted" xml:space="preserve"><value>The SMS was submitted successfully. Recipient delivery has not been confirmed.</value></data>
+  <data name="SmsSubmissionFailed" xml:space="preserve"><value>Android could not submit SMS part {0} (result {1}).</value></data>
+  <data name="SmsSubmissionTimeout" xml:space="preserve"><value>Android did not acknowledge the SMS submission within the configured timeout.</value></data>
+  <data name="SmsDraftCannotOpen" xml:space="preserve"><value>A settings draft cannot open a modem connection.</value></data>
+  <data name="InvalidSmsMode" xml:space="preserve"><value>The SMS mode is invalid.</value></data>
+  <data name="ConnectionTimeoutMustBePositive" xml:space="preserve"><value>The connection timeout must be positive.</value></data>
 </root>

@@ -1,0 +1,132 @@
+<root>
+  <data name="Title" xml:space="preserve">
+    <value>Gurux SMS example</value>
+  </data>
+  <data name="Opened" xml:space="preserve">
+    <value>Opened.</value>
+  </data>
+  <data name="Closed" xml:space="preserve">
+    <value>Closed.</value>
+  </data>
+  <data name="Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close / cancel</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="Canceled" xml:space="preserve">
+    <value>Canceled.</value>
+  </data>
+  <data name="TextPlaceholder" xml:space="preserve">
+    <value>SMS message text</value>
+  </data>
+  <data name="Recipient" xml:space="preserve">
+    <value>SMS recipient</value>
+  </data>
+  <data name="ListMessages" xml:space="preserve">
+    <value>List messages</value>
+  </data>
+  <data name="WatchMessages" xml:space="preserve">
+    <value>Watch messages</value>
+  </data>
+  <data name="StopWatching" xml:space="preserve">
+    <value>Stop watching</value>
+  </data>
+  <data name="SerialUnavailable" xml:space="preserve">
+    <value>On iOS, select a Bluetooth Low Energy device in Settings.</value>
+  </data>
+  <data name="Received" xml:space="preserve">
+    <value>RX {0}: {1}</value>
+  </data>
+  <data name="ReceivedBytes" xml:space="preserve">
+    <value>RX {0}: {1} | {2}</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="RecipientRequired" xml:space="preserve">
+    <value>Enter an SMS recipient.</value>
+  </data>
+  <data name="SmsSent" xml:space="preserve">
+    <value>SMS sent.</value>
+  </data>
+  <data name="SmsMessage" xml:space="preserve">
+    <value>SMS: {0}</value>
+  </data>
+  <data name="ListedMessage" xml:space="preserve">
+    <value>{0:g} {1}: {2}</value>
+  </data>
+  <data name="LogEntry" xml:space="preserve">
+    <value>{0:HH:mm:ss} {1}</value>
+  </data>
+  <data name="UsbUnavailable" xml:space="preserve">
+    <value>USB services are unavailable.</value>
+  </data>
+  <data name="SerialTransport" xml:space="preserve">
+    <value>Serial transport</value>
+  </data>
+  <data name="UsbTransport" xml:space="preserve">
+    <value>USB serial</value>
+  </data>
+  <data name="BluetoothTransport" xml:space="preserve">
+    <value>Paired Bluetooth (Classic or supported BLE)</value>
+  </data>
+  <data name="EnableBluetooth" xml:space="preserve">
+    <value>Enable Bluetooth and pair the serial device in Android Settings first.</value>
+  </data>
+  <data name="BluetoothDevice" xml:space="preserve">
+    <value>Bluetooth device</value>
+  </data>
+  <data name="BluetoothDeviceLabel" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="UsbDeviceLabel" xml:space="preserve">
+    <value>USB {0:X4}:{1:X4} ({2})</value>
+  </data>
+  <data name="DeviceUnavailable" xml:space="preserve">
+    <value>The selected device '{0}' is unavailable. Clear the port field to select another device.</value>
+  </data>
+  <data name="NoDevices" xml:space="preserve">
+    <value>No devices are available. Attach a USB CDC ACM device or pair a Bluetooth Classic serial device in Android Settings.</value>
+  </data>
+  <data name="SelectSerialDevice" xml:space="preserve">
+    <value>Select serial device</value>
+  </data>
+  <data name="WindowNotReady" xml:space="preserve">
+    <value>The application window is not ready.</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="DeviceSelectionCanceled" xml:space="preserve">
+    <value>Device selection was canceled.</value>
+  </data>
+  <data name="BluetoothPermission" xml:space="preserve">
+    <value>Nearby devices permission is required to use paired Bluetooth serial devices.</value>
+  </data>
+  <data name="UsbPermissionRequest" xml:space="preserve">
+    <value>Cannot create USB permission request.</value>
+  </data>
+  <data name="UsbPermissionDenied" xml:space="preserve">
+    <value>USB device permission was denied.</value>
+  </data>
+  <data name="BluetoothProfileRequired" xml:space="preserve">
+    <value>This Bluetooth LE device requires an explicit service and read/write characteristic profile.</value>
+  </data>
+  <data name="ConnectionMenu" xml:space="preserve"><value>Connection</value></data>
+  <data name="ViewMenu" xml:space="preserve"><value>View</value></data>
+  <data name="Data" xml:space="preserve"><value>Data</value></data>
+  <data name="CommunicationSettings" xml:space="preserve"><value>Communication settings</value></data>
+  <data name="ActivityLog" xml:space="preserve"><value>Activity Log</value></data>
+  <data name="Menu" xml:space="preserve"><value>Menu</value></data>
+  <data name="CommunicationInformation" xml:space="preserve"><value>Use Media settings to configure the modem and mobile network. List, watch and stop watching messages from Communication settings.</value></data>
+  <data name="MediaSettings" xml:space="preserve"><value>Media settings</value></data>
+  <data name="Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="ReceivedData" xml:space="preserve"><value>Received data</value></data>
+</root>

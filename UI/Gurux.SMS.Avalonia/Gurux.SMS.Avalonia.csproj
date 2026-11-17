@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile><DefaultItemExcludes>$(DefaultItemExcludes);Tests/**</DefaultItemExcludes>
+    <PackageId>Gurux.SMS.Avalonia</PackageId><Version Condition="'$(BUILD_BUILDNUMBER)' == ''">0.0.1-local</Version><Version Condition="'$(BUILD_BUILDNUMBER)' != ''">$(BUILD_BUILDNUMBER)</Version>
+    <Authors>Gurux Ltd</Authors><Company>Gurux Ltd</Company><Description>Avalonia settings editor for Gurux SMS media.</Description><PackageLicenseExpression>GPL-2.0-only</PackageLicenseExpression><PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <ProjectReference Include="../../Development/Gurux.SMS.csproj" />
+
+    <ProjectReference Include="../../../Gurux.Serial/UI/Gurux.Serial.Avalonia/Gurux.Serial.Avalonia.csproj" Condition="'$(UsePublishedGuruxPackages)' != 'true'" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <RepositoryUrl>https://github.com/Gurux/Gurux.SMS</RepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageIcon>GXSMS.png</PackageIcon>
+    <GuruxCommonVersion Condition="'$(GuruxCommonVersion)' == ''">9.0.2611.1601</GuruxCommonVersion>
+    <GuruxSerialAvaloniaVersion Condition="'$(GuruxSerialAvaloniaVersion)' == ''">[9.0.0,9.1.0)</GuruxSerialAvaloniaVersion>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(UsePublishedGuruxPackages)' == 'true'">
+    <PackageReference Include="Gurux.Serial.Avalonia" Version="$(GuruxSerialAvaloniaVersion)" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../Development/GXSMS.png" Pack="true" PackagePath="/" />
+    <None Remove="Tests/**;tests/**" />
+    <Content Remove="Tests/**;tests/**" />
+    <EmbeddedResource Remove="Tests/**;tests/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Gurux.Common" Version="9.0.2611.1601" />
+  </ItemGroup>
+</Project>
