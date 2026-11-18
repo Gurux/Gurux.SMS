@@ -32,19 +32,19 @@ namespace Gurux.SMS;
 internal sealed class SmsReceiveSession : IDisposable
 {
     /// <summary>Serializes inbox and watcher registration access.</summary>
-    private readonly object sync = new();
+    private readonly object _sync = new();
     /// <summary>Retains only the most recent messages received during this session.</summary>
-    private readonly Queue<GXSMSMessage> inbox = new();
+    private readonly Queue<GXSMSMessage> _inbox = new();
     /// <summary>Contains independent bounded queues for active asynchronous watchers.</summary>
-    private readonly List<Channel<GXSMSMessage>> watchers = [];
+    private readonly List<Channel<GXSMSMessage>> _watchers = [];
     /// <summary>Cancels native submissions and watchers when this session closes.</summary>
-    private readonly CancellationTokenSource lifetime = new();
+    private readonly CancellationTokenSource _lifetime = new();
     /// <summary>Assigns stable session-local indexes to received messages.</summary>
-    private int nextIndex;
+    private int _nextIndex;
     /// <summary>Records whether this session has stopped receiving.</summary>
-    private bool closed;
+    private bool _closed;
     /// <summary>Gets the token canceled when the native connection closes.</summary>
-    internal CancellationToken Token => lifetime.Token;
+    internal CancellationToken Token => _lifetime.Token;
     /// <summary>Gets or sets the native registration released when closing.</summary>
     internal IDisposable? Registration { get; set; }
 
@@ -52,13 +52,13 @@ internal sealed class SmsReceiveSession : IDisposable
     /// <param name="message">The fully assembled incoming message.</param>
     internal void Add(GXSMSMessage message)
     {
-        lock (sync)
+        lock (_sync)
         {
-            if (closed) { return; }
-            message.Index = nextIndex++;
-            if (inbox.Count == 128) { inbox.Dequeue(); }
-            inbox.Enqueue(message);
-            foreach (var watcher in watchers)
+            if (_closed) { return; }
+            message.Index = _nextIndex++;
+            if (_inbox.Count == 128) { _inbox.Dequeue(); }
+            _inbox.Enqueue(message);
+            foreach (var watcher in _watchers)
             {
                 if (!watcher.Writer.TryWrite(message))
                 {
@@ -72,7 +72,7 @@ internal sealed class SmsReceiveSession : IDisposable
     /// <returns>A stable snapshot of the bounded inbox.</returns>
     internal IReadOnlyList<GXSMSMessage> Snapshot()
     {
-        lock (sync) { return inbox.ToArray(); }
+        lock (_sync) { return _inbox.ToArray(); }
     }
 
     /// <summary>Replays retained messages and then awaits new messages until cancellation or close.</summary>
@@ -82,11 +82,11 @@ internal sealed class SmsReceiveSession : IDisposable
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, Token);
         var channel = Channel.CreateBounded<GXSMSMessage>(128);
-        lock (sync)
+        lock (_sync)
         {
             linked.Token.ThrowIfCancellationRequested();
-            foreach (var message in inbox) { channel.Writer.TryWrite(message); }
-            watchers.Add(channel);
+            foreach (var message in _inbox) { channel.Writer.TryWrite(message); }
+            _watchers.Add(channel);
         }
         try
         {
@@ -101,7 +101,7 @@ internal sealed class SmsReceiveSession : IDisposable
         }
         finally
         {
-            lock (sync) { watchers.Remove(channel); }
+            lock (_sync) { _watchers.Remove(channel); }
         }
     }
 
@@ -109,16 +109,16 @@ internal sealed class SmsReceiveSession : IDisposable
     public void Dispose()
     {
         Channel<GXSMSMessage>[] pending;
-        lock (sync)
+        lock (_sync)
         {
-            if (closed) { return; }
-            closed = true;
-            pending = watchers.ToArray();
-            watchers.Clear();
-            inbox.Clear();
+            if (_closed) { return; }
+            _closed = true;
+            pending = _watchers.ToArray();
+            _watchers.Clear();
+            _inbox.Clear();
         }
         // Keep the token source valid for operations that captured this generation before close.
-        lifetime.Cancel();
+        _lifetime.Cancel();
         foreach (var watcher in pending) { watcher.Writer.TryComplete(); }
         Registration?.Dispose();
     }

@@ -49,7 +49,7 @@ public partial class GXSMS : GXTerminal
     public GXSMS()
     {
 #if ANDROID
-        smsPlatform = new AndroidSmsPlatform();
+        _smsPlatform = new AndroidSmsPlatform();
 #endif
     }
 
@@ -106,7 +106,7 @@ public partial class GXSMS : GXTerminal
                 base.Settings = string.Concat(xml.Elements().Select(element => element.ToString(SaveOptions.DisableFormatting)));
                 PIN = pin;
                 CodeType = codeType;
-                mode = selectedMode;
+                _mode = selectedMode;
             });
         }
     }
@@ -129,7 +129,7 @@ public partial class GXSMS : GXTerminal
                 base.JsonSettings = settings.Terminal;
                 PIN = settings.PIN;
                 CodeType = settings.CodeType;
-                mode = settings.Mode;
+                _mode = settings.Mode;
             });
         }
     }
@@ -192,8 +192,9 @@ public partial class GXSMS : GXTerminal
     /// <param name="text">The message text to encode using <see cref="CodeType"/>.</param>
     /// <param name="cancellationToken">Cancels the pending operation.</param>
     /// <returns>The modem response or native submission acknowledgement; recipient delivery is not guaranteed.</returns>
-    /// <exception cref="InvalidOperationException">Sending is disabled or the component is closed.</exception>
-    /// <exception cref="UnauthorizedAccessException">Android SMS sending permission has not been granted or has been revoked.</exception>
+    /// <exception cref="InvalidOperationException">Sending is disabled, the component is closed, or the native SMS subscription or SIM is not ready.</exception>
+    /// <exception cref="UnauthorizedAccessException">Android SMS sending permission has not been granted, has been revoked, or sending is blocked for this application.</exception>
+    /// <exception cref="NotSupportedException">The Android device or its native services do not support SMS.</exception>
     /// <exception cref="TimeoutException">Android does not acknowledge submission within <see cref="GXTerminal.ConnectTimeout"/>.</exception>
     /// <exception cref="ArgumentException">The recipient or message cannot be encoded using the selected alphabet.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The alphabet is unsupported or the encoded message exceeds the single-message limit.</exception>

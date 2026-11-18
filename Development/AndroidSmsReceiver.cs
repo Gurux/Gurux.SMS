@@ -33,17 +33,17 @@ namespace Gurux.SMS;
 internal sealed class AndroidSmsReceiver : BroadcastReceiver
 {
     /// <summary>Receives the broadcast and its ordered result code.</summary>
-    private readonly Action<Intent, int> callback;
+    private readonly Action<Intent, int> _callback;
 
     /// <summary>Creates a receiver without manifest registration or application startup behavior.</summary>
     /// <param name="callback">The native session or submission receiving broadcasts.</param>
-    internal AndroidSmsReceiver(Action<Intent, int> callback) => this.callback = callback;
+    internal AndroidSmsReceiver(Action<Intent, int> callback) => this._callback = callback;
 
     /// <inheritdoc/>
     public override void OnReceive(Context? context, Intent? intent)
     {
         if (intent == null) { return; }
-        try { callback(intent, (int)ResultCode); }
+        try { _callback(intent, (int)ResultCode); }
         catch (Exception error)
         {
             // Host event handlers must not terminate the process from an Android framework callback.

@@ -38,19 +38,19 @@ namespace Gurux.SMS.Example;
 public sealed class ExampleSession : IAsyncDisposable
 {
     /// <summary>Clears retained activity without changing received payloads, connection state or traffic counters.</summary>
-    public void ClearActivity() => log.Clear();
+    public void ClearActivity() => _log.Clear();
     /// <summary>Stores received payloads independently of diagnostic activity.</summary>
-    private readonly Queue<byte[]> receivedData = new();
+    private readonly Queue<byte[]> _receivedData = new();
     /// <summary>Tracks retained payload bytes to bound display history to 64 KiB.</summary>
-    private int receivedDataSize;
+    private int _receivedDataSize;
 
     /// <summary>Clears received display history without changing the connection, counters or activity log.</summary>
     public void ClearReceived()
     {
-        lock (sync)
+        lock (_sync)
         {
-            receivedData.Clear();
-            receivedDataSize = 0;
+            _receivedData.Clear();
+            _receivedDataSize = 0;
         }
     }
 
@@ -59,9 +59,9 @@ public sealed class ExampleSession : IAsyncDisposable
     /// <returns>The received frames separated by platform line endings.</returns>
     public string ReceivedData(bool hex = false)
     {
-        lock (sync)
+        lock (_sync)
         {
-            return string.Join(Environment.NewLine, receivedData.Select(data => ExampleDataDisplay.Format(data, hex)));
+            return string.Join(Environment.NewLine, _receivedData.Select(data => ExampleDataDisplay.Format(data, hex)));
         }
     }
 
@@ -75,35 +75,35 @@ public sealed class ExampleSession : IAsyncDisposable
             return;
         }
         byte[] retained = payload.AsSpan(Math.Max(0, payload.Length - 65536)).ToArray();
-        lock (sync)
+        lock (_sync)
         {
-            receivedData.Enqueue(retained);
-            receivedDataSize += retained.Length;
-            while (receivedData.Count > 500 || receivedDataSize > 65536)
+            _receivedData.Enqueue(retained);
+            _receivedDataSize += retained.Length;
+            while (_receivedData.Count > 500 || _receivedDataSize > 65536)
             {
-                receivedDataSize -= receivedData.Dequeue().Length;
+                _receivedDataSize -= _receivedData.Dequeue().Length;
             }
         }
     }
 
     /// <summary>Allows one modem operation at a time.</summary>
-    private readonly SemaphoreSlim operations = new(1, 1);
+    private readonly SemaphoreSlim _operations = new(1, 1);
     /// <summary>Protects cancellation and disposal state.</summary>
-    private readonly object sync = new();
+    private readonly object _sync = new();
     /// <summary>Stores recent modem activity.</summary>
-    private readonly SessionLog log = new();
+    private readonly SessionLog _log = new();
     /// <summary>Cancels operations when the connection closes.</summary>
-    private CancellationTokenSource lifetime = new();
+    private CancellationTokenSource _lifetime = new();
     /// <summary>Records whether disposal has started.</summary>
-    private bool disposed;
+    private bool _disposed;
     /// <summary>Indicates that an operation holds the modem gate.</summary>
-    private int busy;
+    private int _busy;
     /// <summary>Gets the application's modem transport.</summary>
     public GXSMS Media { get; }
     /// <summary>Gets whether a modem operation is executing.</summary>
-    public bool IsBusy => Volatile.Read(ref busy) != 0;
+    public bool IsBusy => Volatile.Read(ref _busy) != 0;
     /// <summary>Gets a stable copy of recent activity.</summary>
-    public IReadOnlyList<string> Log => log.Snapshot;
+    public IReadOnlyList<string> Log => _log.Snapshot;
 
     /// <summary>Creates the modem using the native serial port or a supplied platform stream factory.</summary>
     /// <param name="serialFactory">Optional USB, Bluetooth or test stream opener.</param>
@@ -132,23 +132,23 @@ public sealed class ExampleSession : IAsyncDisposable
         {
             if (Media.UsesNativeSms)
             {
-                log.Add(string.Format(CultureInfo.CurrentCulture, ExampleResources.Received,
+                _log.Add(string.Format(CultureInfo.CurrentCulture, ExampleResources.Received,
                     args.SenderInfo, Encoding.UTF8.GetString(bytes)));
                 return;
             }
-            log.Add(ExampleDataDisplay.IsAscii(bytes)
+            _log.Add(ExampleDataDisplay.IsAscii(bytes)
                 ? string.Format(CultureInfo.CurrentCulture, ExampleResources.ReceivedBytes, args.SenderInfo, Convert.ToHexString(bytes), ExampleDataDisplay.Format(bytes))
                 : string.Format(CultureInfo.CurrentCulture, ExampleResources.Received, args.SenderInfo, ExampleDataDisplay.Format(bytes)));
         }
         else
         {
-            log.Add(string.Format(CultureInfo.CurrentCulture, ExampleResources.Received, args.SenderInfo, args.Data));
+            _log.Add(string.Format(CultureInfo.CurrentCulture, ExampleResources.Received, args.SenderInfo, args.Data));
         }
     }
     /// <summary>Records transport failures for display by the application.</summary>
     /// <param name="sender">The transport raising the failure.</param>
     /// <param name="args">The transport exception.</param>
-    private void Error(object? sender, MediaErrorEventArgs args) => log.Add(string.Format(CultureInfo.CurrentCulture, ExampleResources.Error, args.Exception.Message));
+    private void Error(object? sender, MediaErrorEventArgs args) => _log.Add(string.Format(CultureInfo.CurrentCulture, ExampleResources.Error, args.Exception.Message));
 
     /// <summary>Runs a modem action under the operation gate and linked cancellation.</summary>
     /// <typeparam name="T">The action result type.</typeparam>
@@ -160,12 +160,12 @@ public sealed class ExampleSession : IAsyncDisposable
     private async Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken cancellationToken)
     {
         CancellationToken token;
-        lock (sync) { ObjectDisposedException.ThrowIf(disposed, this); token = lifetime.Token; }
+        lock (_sync) { ObjectDisposedException.ThrowIf(_disposed, this); token = _lifetime.Token; }
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, cancellationToken);
-        await operations.WaitAsync(linked.Token).ConfigureAwait(false);
-        Interlocked.Exchange(ref busy, 1);
+        await _operations.WaitAsync(linked.Token).ConfigureAwait(false);
+        Interlocked.Exchange(ref _busy, 1);
         try { linked.Token.ThrowIfCancellationRequested(); return await action(linked.Token).ConfigureAwait(false); }
-        finally { Interlocked.Exchange(ref busy, 0); operations.Release(); }
+        finally { Interlocked.Exchange(ref _busy, 0); _operations.Release(); }
     }
 
     /// <summary>Opens and initializes the modem with cancellation support.</summary>
@@ -174,7 +174,7 @@ public sealed class ExampleSession : IAsyncDisposable
     public Task OpenAsync(CancellationToken cancellationToken = default) => RunAsync(async token =>
     {
         await Media.OpenAsync(token).ConfigureAwait(false);
-        log.Add(ExampleResources.Opened);
+        _log.Add(ExampleResources.Opened);
         return true;
     }, cancellationToken);
 
@@ -182,16 +182,16 @@ public sealed class ExampleSession : IAsyncDisposable
     /// <returns>A task completing after close and active operations finish.</returns>
     public async Task CloseAsync()
     {
-        lock (sync) { lifetime.Cancel(); }
+        lock (_sync) { _lifetime.Cancel(); }
         var closing = Media.CloseAsync();
-        await operations.WaitAsync().ConfigureAwait(false);
+        await _operations.WaitAsync().ConfigureAwait(false);
         try
         {
             await closing.ConfigureAwait(false);
-            lock (sync) { lifetime.Dispose(); lifetime = new(); }
-            log.Add(ExampleResources.Closed);
+            lock (_sync) { _lifetime.Dispose(); _lifetime = new(); }
+            _log.Add(ExampleResources.Closed);
         }
-        finally { operations.Release(); }
+        finally { _operations.Release(); }
     }
 
     /// <summary>Sends a text message to the specified phone number.</summary>
@@ -205,7 +205,7 @@ public sealed class ExampleSession : IAsyncDisposable
         {
             if (string.IsNullOrWhiteSpace(receiver)) { throw new ArgumentException(ExampleResources.RecipientRequired, nameof(receiver)); }
             var result = await Media.SendMessageAsync(receiver, text.Replace(@"\r", "\r", StringComparison.Ordinal).Replace(@"\n", "\n", StringComparison.Ordinal), token).ConfigureAwait(false);
-            log.Add(ExampleResources.SmsSent);
+            _log.Add(ExampleResources.SmsSent);
             return result;
         }, cancellationToken);
 
@@ -222,7 +222,7 @@ public sealed class ExampleSession : IAsyncDisposable
     {
         await foreach (var message in Media.WatchMessagesAsync(cancellationToken: token).ConfigureAwait(false))
         {
-            log.Add(string.Format(CultureInfo.CurrentCulture, ExampleResources.SmsMessage, message));
+            _log.Add(string.Format(CultureInfo.CurrentCulture, ExampleResources.SmsMessage, message));
         }
         return true;
     }, cancellationToken);
@@ -231,7 +231,7 @@ public sealed class ExampleSession : IAsyncDisposable
     /// <returns>A task completing after modem disposal.</returns>
     public async ValueTask DisposeAsync()
     {
-        lock (sync) { if (disposed) { return; } disposed = true; }
+        lock (_sync) { if (_disposed) { return; } _disposed = true; }
         await CloseAsync().ConfigureAwait(false);
         Media.OnReceived -= Received;
         Media.OnError -= Error;

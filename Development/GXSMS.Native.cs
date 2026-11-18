@@ -33,25 +33,25 @@ namespace Gurux.SMS;
 public partial class GXSMS
 {
     /// <summary>Provides native SMS operations, or null for an AT modem connection.</summary>
-    private readonly ISmsPlatform? smsPlatform;
+    private readonly ISmsPlatform? _smsPlatform;
     /// <summary>Serializes native lifecycle, settings changes and receive callbacks without asynchronous waits.</summary>
-    private readonly object smsLifecycle = new();
+    private readonly object _smsLifecycle = new();
     /// <summary>Identifies the currently open native receiver generation.</summary>
-    private SmsReceiveSession? smsSession;
+    private SmsReceiveSession? _smsSession;
     /// <summary>Stores the enabled operations while the connection is closed.</summary>
-    private volatile SmsMode mode;
+    private volatile SmsMode _mode;
 
     /// <summary>Creates native media against the selected operating-system service.</summary>
     /// <param name="platform">The native SMS service.</param>
-    internal GXSMS(ISmsPlatform platform) => smsPlatform = platform ?? throw new ArgumentNullException(nameof(platform));
+    internal GXSMS(ISmsPlatform platform) => _smsPlatform = platform ?? throw new ArgumentNullException(nameof(platform));
 
     /// <summary>Gets whether this instance uses native SMS rather than AT modem commands.</summary>
     /// <remarks>Android's default constructor selects native SMS. An explicitly supplied serial stream factory retains modem behavior.</remarks>
-    public bool UsesNativeSms => smsPlatform != null;
+    public bool UsesNativeSms => _smsPlatform != null;
 
     /// <summary>Creates a closed settings container with the same validation rules as this transport kind.</summary>
     /// <returns>A native or modem instance that cannot accidentally open a serial settings transport.</returns>
-    internal GXSMS CreateSettingsDraft() => UsesNativeSms ? new GXSMS(smsPlatform!)
+    internal GXSMS CreateSettingsDraft() => UsesNativeSms ? new GXSMS(_smsPlatform!)
         : new GXSMS((_, _) => throw new NotSupportedException(global::Gurux.SMS.Properties.Resources.Get("SmsDraftCannotOpen")));
 
     /// <summary>Gets or sets the SMS operations allowed while the component is open.</summary>
@@ -59,11 +59,11 @@ public partial class GXSMS
     /// <exception cref="InvalidOperationException">The component is open or opening.</exception>
     public SmsMode Mode
     {
-        get => mode;
+        get => _mode;
         set
         {
             if (!Enum.IsDefined(value)) { throw new ArgumentOutOfRangeException(nameof(value)); }
-            ApplySmsSettings(() => mode = value);
+            ApplySmsSettings(() => _mode = value);
         }
     }
 
@@ -71,7 +71,7 @@ public partial class GXSMS
     /// <param name="apply">The validated settings assignments.</param>
     private void ApplySmsSettings(Action apply)
     {
-        lock (smsLifecycle) { ApplySettings(apply); }
+        lock (_smsLifecycle) { ApplySettings(apply); }
     }
 
     /// <inheritdoc/>
@@ -80,7 +80,7 @@ public partial class GXSMS
         get
         {
             if (!UsesNativeSms) { return base.IsOpen; }
-            lock (smsLifecycle) { return smsSession != null; }
+            lock (_smsLifecycle) { return _smsSession != null; }
         }
     }
 
@@ -88,16 +88,18 @@ public partial class GXSMS
     public override string Name => UsesNativeSms ? MediaType : base.Name;
 
     /// <inheritdoc/>
-    /// <exception cref="UnauthorizedAccessException">The host has not obtained the native permissions required by the selected mode.</exception>
-    /// <exception cref="NotSupportedException">The Android device does not provide an SMS service.</exception>
+    /// <exception cref="UnauthorizedAccessException">The host has not obtained the native permissions required by the selected mode, or Android blocks SMS sending.</exception>
+    /// <exception cref="NotSupportedException">The Android device does not support SMS or its required native services are unavailable.</exception>
+    /// <exception cref="InvalidOperationException">Sending is enabled but no SMS subscription is selected or its SIM is not ready.</exception>
+    /// <remarks>Native opening checks the selected operations without requesting permissions or sending a test message. Successful opening does not guarantee network availability or recipient delivery.</remarks>
     /// <exception cref="OperationCanceledException">The caller cancels startup.</exception>
     public override Task OpenAsync(CancellationToken cancellationToken = default)
     {
         if (!UsesNativeSms) { return base.OpenAsync(cancellationToken); }
         cancellationToken.ThrowIfCancellationRequested();
-        lock (smsLifecycle)
+        lock (_smsLifecycle)
         {
-            if (smsSession != null) { return Task.CompletedTask; }
+            if (_smsSession != null) { return Task.CompletedTask; }
             var errors = Validate();
             if (errors.Count != 0)
             {
@@ -107,15 +109,15 @@ public partial class GXSMS
             var session = new SmsReceiveSession();
             try
             {
-                session.Registration = smsPlatform!.Open(Mode, message => NativeReceived(session, message));
+                session.Registration = _smsPlatform!.Open(Mode, message => NativeReceived(session, message));
                 cancellationToken.ThrowIfCancellationRequested();
-                smsSession = session;
+                _smsSession = session;
                 ReceiveBuffer.Open();
                 SetState(MediaState.Open);
             }
             catch
             {
-                smsSession = null;
+                _smsSession = null;
                 ReceiveBuffer.Close();
                 session.Dispose();
                 throw;
@@ -135,11 +137,11 @@ public partial class GXSMS
     /// <summary>Synchronously unregisters the native session without waiting for asynchronous operations.</summary>
     private void CloseNativeSession()
     {
-        lock (smsLifecycle)
+        lock (_smsLifecycle)
         {
-            var session = smsSession;
+            var session = _smsSession;
             if (session == null) { return; }
-            smsSession = null;
+            _smsSession = null;
             ReceiveBuffer.Close();
             try { session.Dispose(); }
             finally { SetState(MediaState.Closed); }
@@ -151,9 +153,9 @@ public partial class GXSMS
     /// <param name="message">The assembled Unicode SMS and sender.</param>
     private void NativeReceived(SmsReceiveSession session, GXSMSMessage message)
     {
-        lock (smsLifecycle)
+        lock (_smsLifecycle)
         {
-            if (!ReferenceEquals(smsSession, session) || Mode == SmsMode.SendOnly) { return; }
+            if (!ReferenceEquals(_smsSession, session) || Mode == SmsMode.SendOnly) { return; }
             try
             {
                 session.Add(message);
@@ -161,11 +163,11 @@ public partial class GXSMS
             }
             catch (Exception error)
             {
-                if (!ReferenceEquals(smsSession, session)) { return; }
+                if (!ReferenceEquals(_smsSession, session)) { return; }
                 try { ReportError(error); }
                 finally
                 {
-                    if (ReferenceEquals(smsSession, session)) { CloseNativeSession(); }
+                    if (ReferenceEquals(_smsSession, session)) { CloseNativeSession(); }
                 }
             }
         }
@@ -188,10 +190,10 @@ public partial class GXSMS
     /// <exception cref="InvalidOperationException">The native component is closed.</exception>
     private SmsReceiveSession RequireNativeSession(bool sending = false)
     {
-        lock (smsLifecycle)
+        lock (_smsLifecycle)
         {
             RequireOperation(sending);
-            return smsSession ?? throw new InvalidOperationException(global::Gurux.SMS.Properties.Resources.Get("SmsMediaClosed"));
+            return _smsSession ?? throw new InvalidOperationException(global::Gurux.SMS.Properties.Resources.Get("SmsMediaClosed"));
         }
     }
 
@@ -212,7 +214,7 @@ public partial class GXSMS
         }
         try
         {
-            string result = await smsPlatform!.SendAsync(recipient, text, linked.Token).ConfigureAwait(false);
+            string result = await _smsPlatform!.SendAsync(recipient, text, linked.Token).ConfigureAwait(false);
             AddBytesSent(Encoding.UTF8.GetByteCount(text));
             return result;
         }

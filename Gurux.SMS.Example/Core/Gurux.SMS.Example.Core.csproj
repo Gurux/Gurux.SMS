@@ -3,5 +3,6 @@
     <PropertyGroup Condition="'$(BuildMobile)' == 'true' Or '$(BuildApple)' == 'true'">
       <TargetFrameworks>net11.0;net10.0;net11.0-android;net10.0-android</TargetFrameworks>
     </PropertyGroup>
-  <ItemGroup><Compile Remove="Tests/**/*.cs" /><ProjectReference Include="../../../Gurux.Serial/Development/Gurux.Serial.csproj" /><ProjectReference Include="../../../Gurux.Terminal/Development/Gurux.Terminal.csproj" /><ProjectReference Include="../../../Gurux.SMS/Development/Gurux.SMS.csproj" /></ItemGroup>
+  <ItemGroup><Compile Remove="Tests/**/*.cs" /><PackageReference Include="Gurux.Serial" Version="9.0.2611.1803" /><PackageReference Include="Gurux.Terminal" Version="9.0.2611.1803" /><PackageReference Include="Gurux.SMS" Version="9.0.2611.1701" /></ItemGroup>
+  <ItemGroup><PackageReference Include="Gurux.Common" Version="9.0.2611.1802" /></ItemGroup>
 </Project>

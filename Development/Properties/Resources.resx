@@ -81,14 +81,8 @@
   <data name="BaudRateTxt" xml:space="preserve">
     <value>Baud Rate</value>
   </data>
-  <data name="PINCodeTxt" xml:space="preserve">
-    <value>PIN Code:</value>
-  </data>
   <data name="StopBitsTxt" xml:space="preserve">
     <value>Stop Bits</value>
-  </data>
-  <data name="SMSCheckIntervalTxt" xml:space="preserve">
-    <value>Check Interval</value>
   </data>
   <data name="Cancel" xml:space="preserve">
     <value>Cancel</value>
@@ -104,6 +98,9 @@
   <data name="SmsWatcherOverflow" xml:space="preserve"><value>The SMS watcher could not keep up with incoming messages. Restart the watcher.</value></data>
   <data name="SmsPermissionRequired" xml:space="preserve"><value>The selected SMS mode requires Android permission {0}.</value></data>
   <data name="SmsServiceUnavailable" xml:space="preserve"><value>This device does not provide an SMS service.</value></data>
+  <data name="SmsSendingNotAllowed" xml:space="preserve"><value>Android does not allow this application to send SMS messages.</value></data>
+  <data name="SmsSubscriptionUnavailable" xml:space="preserve"><value>No SMS subscription is available. Insert or enable a SIM card and select a default SIM for SMS messages.</value></data>
+  <data name="SmsSimNotReady" xml:space="preserve"><value>The SIM card selected for SMS messages is not ready. Check that it is enabled and unlocked.</value></data>
   <data name="SmsSubmitted" xml:space="preserve"><value>The SMS was submitted successfully. Recipient delivery has not been confirmed.</value></data>
   <data name="SmsSubmissionFailed" xml:space="preserve"><value>Android could not submit SMS part {0} (result {1}).</value></data>
   <data name="SmsSubmissionTimeout" xml:space="preserve"><value>Android did not acknowledge the SMS submission within the configured timeout.</value></data>

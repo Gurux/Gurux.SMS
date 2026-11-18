@@ -34,9 +34,9 @@ namespace Gurux.SMS;
 internal sealed class AndroidSmsRegistration : IDisposable
 {
     /// <summary>Retains the application context used to register the receiver.</summary>
-    private readonly Context context;
+    private readonly Context _context;
     /// <summary>Contains the registered receiver until disposal.</summary>
-    private AndroidSmsReceiver? receiver;
+    private AndroidSmsReceiver? _receiver;
 
     /// <summary>Registers a broadcast callback with explicit export and optional sender permission restrictions.</summary>
     /// <param name="context">The application context.</param>
@@ -46,7 +46,7 @@ internal sealed class AndroidSmsRegistration : IDisposable
     /// <param name="callback">The operation receiving matching broadcasts.</param>
     internal AndroidSmsRegistration(Context context, string? action, string? permission, bool exported, Action<Intent, int> callback)
     {
-        this.context = context;
+        this._context = context;
         if (action == null) { return; }
         var pending = new AndroidSmsReceiver(callback);
         try
@@ -60,7 +60,7 @@ internal sealed class AndroidSmsRegistration : IDisposable
             {
                 context.RegisterReceiver(pending, filter, permission, null);
             }
-            receiver = pending;
+            _receiver = pending;
         }
         catch { pending.Dispose(); throw; }
     }
@@ -68,10 +68,10 @@ internal sealed class AndroidSmsRegistration : IDisposable
     /// <summary>Unregisters the callback and releases its Android peer.</summary>
     public void Dispose()
     {
-        var previous = Interlocked.Exchange(ref receiver, null);
+        var previous = Interlocked.Exchange(ref _receiver, null);
         if (previous != null)
         {
-            try { context.UnregisterReceiver(previous); }
+            try { _context.UnregisterReceiver(previous); }
             finally { previous.Dispose(); }
         }
     }

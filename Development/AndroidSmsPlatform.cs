@@ -45,11 +45,14 @@ internal sealed class AndroidSmsPlatform : ISmsPlatform
     /// <inheritdoc/>
     public IDisposable Open(SmsMode mode, Action<GXSMSMessage> receive)
     {
-        if (mode != SmsMode.ReceiveOnly) { RequirePermission(Manifest.Permission.SendSms); }
-        if (mode != SmsMode.SendOnly) { RequirePermission(Manifest.Permission.ReceiveSms); }
-        if (Context.PackageManager?.HasSystemFeature(PackageManager.FeatureTelephony) != true)
+        RequireSmsSupport();
+        if (mode != SmsMode.ReceiveOnly)
         {
-            throw new NotSupportedException(Properties.Resources.Get("SmsServiceUnavailable"));
+            using var manager = RequireSendingService();
+        }
+        if (mode != SmsMode.SendOnly)
+        {
+            RequirePermission(Manifest.Permission.ReceiveSms);
         }
         return new AndroidSmsRegistration(Context,
             mode == SmsMode.SendOnly ? null : Telephony.Sms.Intents.SmsReceivedAction,
@@ -77,6 +80,89 @@ internal sealed class AndroidSmsPlatform : ISmsPlatform
             });
     }
 
+    /// <summary>Rejects devices whose telephony hardware or configuration does not support SMS.</summary>
+    /// <exception cref="NotSupportedException">The device has no telephony messaging feature or SMS-capable telephony service.</exception>
+    private static void RequireSmsSupport()
+    {
+        string feature = OperatingSystem.IsAndroidVersionAtLeast(33)
+            ? PackageManager.FeatureTelephonyMessaging
+            : PackageManager.FeatureTelephony;
+        using var telephony = Context.GetSystemService(Context.TelephonyService) as TelephonyManager;
+        if (Context.PackageManager?.HasSystemFeature(feature) != true || telephony == null
+            || !(OperatingSystem.IsAndroidVersionAtLeast(35) ? telephony.IsDeviceSmsCapable : telephony.IsSmsCapable))
+        {
+            throw new NotSupportedException(Properties.Resources.Get("SmsServiceUnavailable"));
+        }
+    }
+
+    /// <summary>Checks sending permission, application restrictions, the SMS service and the selected SIM before submission.</summary>
+    /// <returns>The SMS manager to dispose after checking or submitting a message.</returns>
+    /// <exception cref="UnauthorizedAccessException">Sending permission is missing or Android blocks this application's SMS operation.</exception>
+    /// <exception cref="NotSupportedException">The SMS manager or telephony service is unavailable.</exception>
+    /// <exception cref="InvalidOperationException">No default SMS subscription is available or its SIM is not ready.</exception>
+    /// <remarks>No permissions are requested and no test message is sent. Network and recipient-specific failures are still reported by submission acknowledgements.</remarks>
+    private static SmsManager RequireSendingService()
+    {
+        RequirePermission(Manifest.Permission.SendSms);
+        using var appOps = Context.GetSystemService(Context.AppOpsService) as AppOpsManager;
+        if (OperatingSystem.IsAndroidVersionAtLeast(23) && appOps != null)
+        {
+            var access = appOps.CheckOpNoThrow(AppOpsManager.OpstrSendSms!, Android.OS.Process.MyUid(), Context.PackageName!);
+            if (access != AppOpsManagerMode.Allowed && access != AppOpsManagerMode.Default)
+            {
+                throw new UnauthorizedAccessException(Properties.Resources.Get("SmsSendingNotAllowed"));
+            }
+        }
+        var manager = (OperatingSystem.IsAndroidVersionAtLeast(23)
+            ? Context.GetSystemService(Java.Lang.Class.FromType(typeof(SmsManager))) as SmsManager
+            : SmsManager.Default)
+            ?? throw new NotSupportedException(Properties.Resources.Get("SmsServiceUnavailable"));
+        try
+        {
+            using var telephony = Context.GetSystemService(Context.TelephonyService) as TelephonyManager
+                ?? throw new NotSupportedException(Properties.Resources.Get("SmsServiceUnavailable"));
+            if (OperatingSystem.IsAndroidVersionAtLeast(22))
+            {
+                int subscriptionId = SmsManager.DefaultSmsSubscriptionId;
+                if (subscriptionId < 0)
+                {
+                    throw new InvalidOperationException(Properties.Resources.Get("SmsSubscriptionUnavailable"));
+                }
+                if (OperatingSystem.IsAndroidVersionAtLeast(24))
+                {
+                    using var selectedTelephony = telephony.CreateForSubscriptionId(subscriptionId)
+                        ?? throw new NotSupportedException(Properties.Resources.Get("SmsServiceUnavailable"));
+                    RequireReadySim(selectedTelephony);
+                }
+                else
+                {
+                    RequireReadySim(telephony);
+                }
+            }
+            else
+            {
+                RequireReadySim(telephony);
+            }
+            return manager;
+        }
+        catch
+        {
+            manager.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Rejects absent, locked, disabled or otherwise unready SIM cards.</summary>
+    /// <param name="telephony">The telephony service associated with the outgoing SMS subscription.</param>
+    /// <exception cref="InvalidOperationException">The selected SIM has not reached the ready state.</exception>
+    private static void RequireReadySim(TelephonyManager telephony)
+    {
+        if (telephony.SimState != SimState.Ready)
+        {
+            throw new InvalidOperationException(Properties.Resources.Get("SmsSimNotReady"));
+        }
+    }
+
     /// <summary>Checks a permission without showing UI or requesting unrelated SMS capabilities.</summary>
     /// <param name="permission">The Android permission required by the selected operation.</param>
     /// <exception cref="UnauthorizedAccessException">The host application has not obtained this permission.</exception>
@@ -92,12 +178,9 @@ internal sealed class AndroidSmsPlatform : ISmsPlatform
     /// <inheritdoc/>
     public async Task<string> SendAsync(string recipient, string text, CancellationToken cancellationToken)
     {
-        RequirePermission(Manifest.Permission.SendSms);
         cancellationToken.ThrowIfCancellationRequested();
-        using var manager = (OperatingSystem.IsAndroidVersionAtLeast(23)
-            ? Context.GetSystemService(Java.Lang.Class.FromType(typeof(SmsManager))) as SmsManager
-            : SmsManager.Default)
-            ?? throw new NotSupportedException(Properties.Resources.Get("SmsServiceUnavailable"));
+        RequireSmsSupport();
+        using var manager = RequireSendingService();
         var parts = manager.DivideMessage(text);
         if (parts == null || parts.Count == 0) { throw new ArgumentException(Properties.Resources.Get("SmsRecipientAndTextRequired")); }
         var submission = new SmsSubmission(parts.Count);

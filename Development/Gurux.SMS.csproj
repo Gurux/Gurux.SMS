@@ -21,24 +21,22 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <GuruxTerminalVersion Condition="'$(GuruxTerminalVersion)' == ''">[9.0.0,9.1.0)</GuruxTerminalVersion>
-    <GuruxCommonVersion Condition="'$(GuruxCommonVersion)' == ''">9.0.2611.1303</GuruxCommonVersion>
+    <GuruxTerminalVersion Condition="'$(GuruxTerminalVersion)' == ''">9.0.2611.1803</GuruxTerminalVersion>
+    <GuruxCommonVersion Condition="'$(GuruxCommonVersion)' == ''">9.0.2611.1802</GuruxCommonVersion>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Gurux.Terminal/Development/Gurux.Terminal.csproj" Condition="'$(UsePublishedGuruxPackages)' != 'true'" />
+    <PackageReference Include="Gurux.Terminal" Version="9.0.2611.1803" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../README.md" Pack="true" PackagePath="/" />
     <None Include="GXSMS.png" Pack="true" PackagePath="/" />
   </ItemGroup>
-  <ItemGroup Condition="'$(UsePublishedGuruxPackages)' == 'true'">
-    <PackageReference Include="Gurux.Terminal" Version="$(GuruxTerminalVersion)" />
-  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="Properties/Resources.resx" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Gurux.Common" Version="9.0.2611.1601" />
+    <PackageReference Include="Gurux.Common" Version="9.0.2611.1802" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="GXSMS.png" LogicalName="Gurux.SMS.MediaIcon.png" />

@@ -33,40 +33,40 @@ namespace Gurux.SMS.Example.Maui.Properties;
 internal static class ExampleSettingsResources
 {
     /// <summary>Reads this assembly's embedded settings messages.</summary>
-    private static readonly ResourceManager Manager = new("Gurux.SMS.Example.Maui.Properties.ExampleSettingsResources", typeof(ExampleSettingsResources).Assembly);
+    private static readonly ResourceManager _manager = new("Gurux.SMS.Example.Maui.Properties.ExampleSettingsResources", typeof(ExampleSettingsResources).Assembly);
 
     /// <summary>Explains that a settings operation is already in progress.</summary>
-    internal static string EditorAlreadyShowing => Manager.GetString(nameof(EditorAlreadyShowing), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(EditorAlreadyShowing);
+    internal static string EditorAlreadyShowing => _manager.GetString(nameof(EditorAlreadyShowing), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(EditorAlreadyShowing);
     /// <summary>Gets the localized Connection caption for the example interface.</summary>
-    internal static string ConnectionGroup => Manager.GetString(nameof(ConnectionGroup), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ConnectionGroup);
+    internal static string ConnectionGroup => _manager.GetString(nameof(ConnectionGroup), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ConnectionGroup);
     /// <summary>Gets the localized Data exchange caption for the example interface.</summary>
-    internal static string DataGroup => Manager.GetString(nameof(DataGroup), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(DataGroup);
+    internal static string DataGroup => _manager.GetString(nameof(DataGroup), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(DataGroup);
     /// <summary>Gets the localized Activity log caption for the example interface.</summary>
-    internal static string ActivityGroup => Manager.GetString(nameof(ActivityGroup), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ActivityGroup);
+    internal static string ActivityGroup => _manager.GetString(nameof(ActivityGroup), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ActivityGroup);
     /// <summary>Gets the localized Connected caption for the example interface.</summary>
-    internal static string ConnectionActive => Manager.GetString(nameof(ConnectionActive), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ConnectionActive);
+    internal static string ConnectionActive => _manager.GetString(nameof(ConnectionActive), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ConnectionActive);
     /// <summary>Gets the localized Disconnected caption for the example interface.</summary>
-    internal static string ConnectionInactive => Manager.GetString(nameof(ConnectionInactive), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ConnectionInactive);
+    internal static string ConnectionInactive => _manager.GetString(nameof(ConnectionInactive), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ConnectionInactive);
     /// <summary>Gets the localized Working… caption for the example interface.</summary>
-    internal static string ConnectionBusy => Manager.GetString(nameof(ConnectionBusy), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ConnectionBusy);
+    internal static string ConnectionBusy => _manager.GetString(nameof(ConnectionBusy), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(ConnectionBusy);
     /// <summary>Gets the localized Message caption for the example interface.</summary>
-    internal static string PayloadLabel => Manager.GetString(nameof(PayloadLabel), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(PayloadLabel);
+    internal static string PayloadLabel => _manager.GetString(nameof(PayloadLabel), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(PayloadLabel);
     /// <summary>Gets the localized Inbox caption for the example interface.</summary>
-    internal static string InboxGroup => Manager.GetString(nameof(InboxGroup), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(InboxGroup);
+    internal static string InboxGroup => _manager.GetString(nameof(InboxGroup), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(InboxGroup);
     /// <summary>Gets the localized state caption for an open media connection.</summary>
-    internal static string StatusOpen => Manager.GetString(nameof(StatusOpen), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(StatusOpen);
+    internal static string StatusOpen => _manager.GetString(nameof(StatusOpen), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(StatusOpen);
 
     /// <summary>Gets the localized state caption for a closed media connection.</summary>
-    internal static string StatusClosed => Manager.GetString(nameof(StatusClosed), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(StatusClosed);
+    internal static string StatusClosed => _manager.GetString(nameof(StatusClosed), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(StatusClosed);
 
     /// <summary>Gets the localized placeholder for an unselected endpoint.</summary>
-    internal static string StatusNotConfigured => Manager.GetString(nameof(StatusNotConfigured), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(StatusNotConfigured);
+    internal static string StatusNotConfigured => _manager.GetString(nameof(StatusNotConfigured), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(StatusNotConfigured);
 
     /// <summary>Gets the localized format for connection state and selected serial port.</summary>
-    internal static string StatusSerial => Manager.GetString(nameof(StatusSerial), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(StatusSerial);
+    internal static string StatusSerial => _manager.GetString(nameof(StatusSerial), System.Globalization.CultureInfo.CurrentUICulture) ?? nameof(StatusSerial);
 
     /// <summary>Gets the localized caption or message for SmsPermissionDenied.</summary>
-    internal static string SmsPermissionDenied => Manager.GetString(nameof(SmsPermissionDenied), System.Globalization.CultureInfo.CurrentUICulture)!;
+    internal static string SmsPermissionDenied => _manager.GetString(nameof(SmsPermissionDenied), System.Globalization.CultureInfo.CurrentUICulture)!;
     /// <summary>Gets the localized caption or message for StatusNativeSms.</summary>
-    internal static string StatusNativeSms => Manager.GetString(nameof(StatusNativeSms), System.Globalization.CultureInfo.CurrentUICulture)!;
+    internal static string StatusNativeSms => _manager.GetString(nameof(StatusNativeSms), System.Globalization.CultureInfo.CurrentUICulture)!;
 }

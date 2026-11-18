@@ -9,7 +9,7 @@
     <Content Include="$(ExampleRoot)/Resources/AppIcon/appicon.png" Link="Linux/org.gurux.examples.sms.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Compile Include="$(ExampleRoot)/UI/Desktop/**/*.cs" Exclude="$(ExampleRoot)/UI/Desktop/**/bin/**;$(ExampleRoot)/UI/Desktop/**/obj/**;$(ExampleRoot)/UI/Desktop/**/Tests/**" />
     <EmbeddedResource Include="$(ExampleRoot)/UI/Desktop/Properties/ExampleSettingsResources.resx" LogicalName="Gurux.SMS.Example.Desktop.Properties.ExampleSettingsResources.resources" />
-    <ProjectReference Include="$(ExampleRoot)/../UI/Gurux.SMS.Avalonia/Gurux.SMS.Avalonia.csproj" AdditionalProperties="GuruxExamplesBuild=true" />
+    <PackageReference Include="Gurux.SMS.Avalonia" Version="9.0.2611.1701" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
   </ItemGroup>
@@ -17,10 +17,9 @@
     <MauiIcon Include="$(ExampleRoot)/Resources/AppIcon/appicon.png" Color="#FFFFFF" Resize="true" />
     <Compile Include="$(ExampleRoot)/UI/Maui/**/*.cs" Exclude="$(ExampleRoot)/UI/Maui/**/bin/**;$(ExampleRoot)/UI/Maui/**/obj/**;$(ExampleRoot)/UI/Maui/**/Tests/**;$(ExampleRoot)/UI/Maui/Platforms/**" />
     <EmbeddedResource Include="$(ExampleRoot)/UI/Maui/Properties/ExampleSettingsResources.resx" LogicalName="Gurux.SMS.Example.Maui.Properties.ExampleSettingsResources.resources" />
-    <ProjectReference Include="$(ExampleRoot)/../UI/Gurux.SMS.Maui/Gurux.SMS.Maui.csproj" AdditionalProperties="GuruxExamplesBuild=true" />
-    <ProjectReference Include="$(ExampleRoot)/../../Gurux.Serial/Development/Gurux.Serial.csproj" AdditionalProperties="GuruxExamplesBuild=true" />
-    <PackageReference Include="Microsoft.Maui.Controls" Version="[11.0.10,12.0.0)" Condition="$([MSBuild]::GetTargetFrameworkVersion('$(TargetFramework)')) == '11.0'" />
-    <PackageReference Include="Microsoft.Maui.Controls" Version="[10.0.110,11.0.0)" Condition="$([MSBuild]::GetTargetFrameworkVersion('$(TargetFramework)')) == '10.0'" />
+    <PackageReference Include="Gurux.SMS.Maui" Version="9.0.2611.1701" />
+    <PackageReference Include="Gurux.Serial" Version="9.0.2611.1803" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
   </ItemGroup>
   <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
     <ApplicationDefinition Include="$(ExampleRoot)/UI/Maui/Platforms/Windows/App.xaml" Link="Platforms/Windows/App.xaml" />

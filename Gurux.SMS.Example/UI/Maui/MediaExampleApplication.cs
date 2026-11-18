@@ -35,17 +35,17 @@ namespace Gurux.SMS.Example.Maui;
 public sealed class MediaExampleApplication : Application
 {
     /// <summary>Opens serial streams using the current platform transport when supplied.</summary>
-    private readonly Func<SerialPortSettings, CancellationToken, ValueTask<Stream>>? serialFactory;
+    private readonly Func<SerialPortSettings, CancellationToken, ValueTask<Stream>>? _serialFactory;
     /// <summary>Creates the application with an optional platform serial opener.</summary>
     /// <param name="serialFactory">The native USB, Bluetooth or test transport opener.</param>
     public MediaExampleApplication(Func<SerialPortSettings, CancellationToken, ValueTask<Stream>>? serialFactory = null)
     {
-        this.serialFactory = serialFactory;
+        this._serialFactory = serialFactory;
     }
     /// <inheritdoc/>
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        var page = new MediaExamplePage(serialFactory);
+        var page = new MediaExamplePage(_serialFactory);
         var window = new Window(new NavigationPage(page)) { Title = global::Gurux.SMS.Example.Properties.ExampleResources.Title };
         if (OperatingSystem.IsWindows())
         {

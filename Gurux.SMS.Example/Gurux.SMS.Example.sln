@@ -1,9 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.12.12405.243 stable
+VisualStudioVersion = 18.12.12405.243
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gurux.SMS.Example", "Gurux.SMS.Example.csproj", "{5389433C-ACD8-4911-BBBB-B67F3E51DA28}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gurux.SMS", "..\Development\Gurux.SMS.csproj", "{4EFAAEF6-6BFC-1804-F084-9D7F0CE282E0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gurux.SMS.Example.Core", "Core\Gurux.SMS.Example.Core.csproj", "{795C0175-E394-1F26-51AC-01DAC70E247E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gurux.SMS.Maui", "..\UI\Gurux.SMS.Maui\Gurux.SMS.Maui.csproj", "{2D0054A1-74F6-A9C6-716A-80DD399DD186}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +21,18 @@ Global
 		{5389433C-ACD8-4911-BBBB-B67F3E51DA28}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5389433C-ACD8-4911-BBBB-B67F3E51DA28}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5389433C-ACD8-4911-BBBB-B67F3E51DA28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4EFAAEF6-6BFC-1804-F084-9D7F0CE282E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4EFAAEF6-6BFC-1804-F084-9D7F0CE282E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4EFAAEF6-6BFC-1804-F084-9D7F0CE282E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4EFAAEF6-6BFC-1804-F084-9D7F0CE282E0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{795C0175-E394-1F26-51AC-01DAC70E247E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{795C0175-E394-1F26-51AC-01DAC70E247E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{795C0175-E394-1F26-51AC-01DAC70E247E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{795C0175-E394-1F26-51AC-01DAC70E247E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D0054A1-74F6-A9C6-716A-80DD399DD186}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D0054A1-74F6-A9C6-716A-80DD399DD186}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D0054A1-74F6-A9C6-716A-80DD399DD186}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D0054A1-74F6-A9C6-716A-80DD399DD186}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -232,3 +232,5 @@ GXSMS csharp Sample/.vs/
 # Tests and validation outputs stay local.
 **/[Tt]ests/
 artifacts/
+/Gurux.SMS.Example/.vs
+/UI/Gurux.SMS.Maui/.vs

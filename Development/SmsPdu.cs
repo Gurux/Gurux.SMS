@@ -33,7 +33,7 @@ public static class SmsPdu
     /// <summary>Maps GSM default alphabet septets to Unicode characters.</summary>
     const string Alphabet = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\u001bÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
     /// <summary>Maps characters in the GSM extension table to their escaped septet values.</summary>
-    static readonly Dictionary<char, byte> Extension = new()
+    static readonly Dictionary<char, byte> _extension = new()
     {
         ['\f'] = 10,
         ['^'] = 20,
@@ -87,7 +87,7 @@ public static class SmsPdu
             var septets = new List<byte>();
             foreach (char c in message)
             {
-                if (Extension.TryGetValue(c, out byte extended))
+                if (_extension.TryGetValue(c, out byte extended))
                 {
                     septets.Add(27);
                     septets.Add(extended);
@@ -247,7 +247,7 @@ public static class SmsPdu
                 value &= 127;
                 if (escaped)
                 {
-                    char ch = Extension.FirstOrDefault(pair => pair.Value == value).Key;
+                    char ch = _extension.FirstOrDefault(pair => pair.Value == value).Key;
                     text.Append(ch == 0 ? '�' : ch);
                     escaped = false;
                 }

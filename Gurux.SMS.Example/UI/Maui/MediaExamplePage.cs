@@ -41,143 +41,143 @@ namespace Gurux.SMS.Example.Maui;
 public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
 {
     /// <summary>Displays received payloads independently of the diagnostic activity log.</summary>
-    private readonly Editor received = new() { AutomationId = "ReceivedData", IsReadOnly = true };
+    private readonly Editor _received = new() { AutomationId = "ReceivedData", IsReadOnly = true };
 
     /// <summary>Displays connection state and selected endpoints in the fixed bottom status bar.</summary>
-    private readonly Label mediaStatus = new() { AutomationId = "MediaStatus" };
+    private readonly Label _mediaStatus = new() { AutomationId = "MediaStatus" };
 
     /// <summary>Persists this application's media and outgoing data preferences.</summary>
-    private readonly ExampleSettingsStore preferences = new();
+    private readonly ExampleSettingsStore _preferences = new();
     /// <summary>Completes when startup preferences have been applied on the UI thread.</summary>
-    private Task preferencesLoading = Task.CompletedTask;
+    private Task _preferencesLoading = Task.CompletedTask;
     /// <summary>Tracks the latest queued write so shutdown waits for the final disk update.</summary>
-    private Task preferencesSaving = Task.CompletedTask;
+    private Task _preferencesSaving = Task.CompletedTask;
     /// <summary>Prevents persistence until startup restoration has completed.</summary>
-    private bool preferencesReady;
+    private bool _preferencesReady;
     /// <summary>Tracks the most recently requested snapshot and avoids saving unchanged controls.</summary>
-    private string? preferencesSnapshot;
+    private string? _preferencesSnapshot;
 
     /// <summary>The modem session owned by this view.</summary>
-    private readonly ExampleSession session;
+    private readonly ExampleSession _session;
     /// <summary>Cancels operations when the view shuts down.</summary>
-    private readonly CancellationTokenSource lifetime = new();
+    private readonly CancellationTokenSource _lifetime = new();
     /// <summary>Tracks whether the selected serial port is currently available without blocking UI refresh.</summary>
-    private readonly global::Gurux.Serial.SerialPortAvailability portAvailability = new();
+    private readonly global::Gurux.Serial.SerialPortAvailability _portAvailability = new();
     /// <summary>Refreshes UI state without transport callbacks touching controls.</summary>
-    private readonly Microsoft.Maui.Dispatching.IDispatcherTimer timer;
+    private readonly Microsoft.Maui.Dispatching.IDispatcherTimer _timer;
     /// <summary>Displays whether the modem is open.</summary>
-    private readonly Label state = new();
+    private readonly Label _state = new();
     /// <summary>Displays operation results and failures.</summary>
-    private readonly Label error = new();
+    private readonly Label _error = new();
     /// <summary>Displays the bounded modem activity history.</summary>
-    private readonly Editor log = new() { IsReadOnly = true, HeightRequest = 240, AutomationId = "ActivityLog" };
+    private readonly Editor _log = new() { IsReadOnly = true, HeightRequest = 240, AutomationId = "ActivityLog" };
     /// <summary>Accepts a message or terminal command.</summary>
-    private readonly Editor text = new() { HeightRequest = 88, AutoSize = EditorAutoSizeOption.TextChanges, Placeholder = ExampleResources.TextPlaceholder, AutomationId = "SendText" };
+    private readonly Editor _text = new() { HeightRequest = 88, AutoSize = EditorAutoSizeOption.TextChanges, Placeholder = ExampleResources.TextPlaceholder, AutomationId = "SendText" };
     /// <summary>Contains actions disabled while the modem is busy.</summary>
-    private readonly List<Button> unsafeButtons = [];
+    private readonly List<Button> _unsafeButtons = [];
     /// <summary>Accepts the destination phone number.</summary>
-    private readonly Entry receiver = new() { Placeholder = ExampleResources.Recipient, AutomationId = "Receiver" };
+    private readonly Entry _receiver = new() { Placeholder = ExampleResources.Recipient, AutomationId = "Receiver" };
     /// <summary>Allows Close to cancel pending sends or close an open connection.</summary>
-    private Button? closeButton;
+    private Button? _closeButton;
     /// <summary>Shares the asynchronous disposal operation between lifecycle callbacks.</summary>
-    private Task? disposal;
+    private Task? _disposal;
     /// <summary>Cancels the active inbox watcher independently of the view.</summary>
-    private CancellationTokenSource? watch;
+    private CancellationTokenSource? _watch;
     /// <summary>Tracks whether the inbox watcher is still running rather than merely retaining its token source.</summary>
-    private bool watching;
+    private bool _watching;
     /// <summary>Allows cancellation only while an uncanceled inbox watcher is active.</summary>
-    private Button? stopWatchingButton;
+    private Button? _stopWatchingButton;
 
     /// <summary>Stores the latest connection phase independently of periodic UI refreshes.</summary>
-    private int mediaPhase;
+    private int _mediaPhase;
     /// <summary>Prevents callbacks and queued refreshes from touching a disposed view.</summary>
-    private int shuttingDown;
+    private int _shuttingDown;
     /// <summary>Marshals transport state notifications onto the native UI thread.</summary>
-    private readonly Microsoft.Maui.Dispatching.IDispatcher uiDispatcher;
+    private readonly Microsoft.Maui.Dispatching.IDispatcher _uiDispatcher;
 
     /// <summary>Contains the persistent messaging controls.</summary>
-    private readonly VerticalStackLayout dataView = new() { AutomationId = "DataView", Spacing = 12 };
+    private readonly VerticalStackLayout _dataView = new() { AutomationId = "DataView", Spacing = 12 };
     /// <summary>Contains communication options independently of activity history.</summary>
-    private readonly VerticalStackLayout communicationView = new() { AutomationId = "CommunicationView", Spacing = 12, IsVisible = false };
+    private readonly VerticalStackLayout _communicationView = new() { AutomationId = "CommunicationView", Spacing = 12, IsVisible = false };
     /// <summary>Contains the existing activity history.</summary>
-    private readonly VerticalStackLayout activityView = new() { AutomationId = "ActivityView", Spacing = 12, IsVisible = false };
+    private readonly VerticalStackLayout _activityView = new() { AutomationId = "ActivityView", Spacing = 12, IsVisible = false };
     /// <summary>Maps native menu actions to the existing toolbar controls.</summary>
-    private readonly Dictionary<string, Button> actionButtons = [];
+    private readonly Dictionary<string, Button> _actionButtons = [];
     /// <summary>Prevents navigation while the settings editor owns the view.</summary>
-    private bool settingsShowing;
+    private bool _settingsShowing;
     /// <summary>Prevents overlapping native navigation sheets.</summary>
-    private bool navigationShowing;
+    private bool _navigationShowing;
     /// <summary>Refreshes availability of native commands.</summary>
-    private readonly List<Command> menuCommands = [];
+    private readonly List<Command> _menuCommands = [];
 
     /// <summary>Creates Serial-style connection, messaging and reception cards with inbox tools in Communication settings.</summary>
     /// <param name="serialFactory">Optional USB, Bluetooth or test stream opener.</param>
     public MediaExamplePage(Func<SerialPortSettings, CancellationToken, ValueTask<Stream>>? serialFactory = null)
     {
         Title = ExampleResources.Title;
-        session = new ExampleSession(serialFactory);
+        _session = new ExampleSession(serialFactory);
         ExampleLayout.Apply(this);
-        ExampleLayout.Activity(received);
-        ExampleLayout.Activity(log);
-        if (OperatingSystem.IsWindows()) { text.FontFamily = "Consolas"; }
-        ExampleLayout.Notice(error);
+        ExampleLayout.Activity(_received);
+        ExampleLayout.Activity(_log);
+        if (OperatingSystem.IsWindows()) { _text.FontFamily = "Consolas"; }
+        ExampleLayout.Notice(_error);
         var body = ExampleLayout.Body();
         var toolbar = ExampleLayout.Row();
         var sendActions = ExampleLayout.Row();
         var inboxActions = ExampleLayout.Row();
-        body.Children.Add(ExampleLayout.Header(state));
+        body.Children.Add(ExampleLayout.Header(_state));
         if (OperatingSystem.IsIOS()) { body.Children.Add(new Label { Text = ExampleResources.SerialUnavailable }); }
         AddButton(toolbar, "Open", ExampleResources.Open, OpenAsync, true);
-        AddButton(toolbar, "Close", ExampleResources.Close, async () => { watch?.Cancel(); await session.CloseAsync(); });
+        AddButton(toolbar, "Close", ExampleResources.Close, async () => { _watch?.Cancel(); await _session.CloseAsync(); });
         AddButton(null, "Settings", ExampleResources.Settings, EditMediaSettingsAsync, true);
         AddButton(sendActions, "Send", ExampleResources.Send, async () =>
         {
-            string? result = await session.SendAsync(text.Text ?? "", receiver.Text ?? "", lifetime.Token);
-            if (result is not null) { error.Text = result; }
+            string? result = await _session.SendAsync(_text.Text ?? "", _receiver.Text ?? "", _lifetime.Token);
+            if (result is not null) { _error.Text = result; }
         }, true);
-        AddButton(sendActions, "Clear", ExampleResources.Clear, () => { session.ClearReceived(); return Task.CompletedTask; });
+        AddButton(sendActions, "Clear", ExampleResources.Clear, () => { _session.ClearReceived(); return Task.CompletedTask; });
         AddButton(inboxActions, "ListMessages", ExampleResources.ListMessages, async () =>
         {
-            var messages = await session.ListMessagesAsync(lifetime.Token);
-            error.Text = string.Join(Environment.NewLine, messages.Select(message => string.Format(CultureInfo.CurrentCulture, ExampleResources.ListedMessage, message.Time, message.PhoneNumber, message.Data)));
+            var messages = await _session.ListMessagesAsync(_lifetime.Token);
+            _error.Text = string.Join(Environment.NewLine, messages.Select(message => string.Format(CultureInfo.CurrentCulture, ExampleResources.ListedMessage, message.Time, message.PhoneNumber, message.Data)));
         }, true);
         AddButton(inboxActions, "WatchMessages", ExampleResources.WatchMessages, async () =>
         {
-            watch?.Cancel(); watch?.Dispose(); watch = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
-            watching = true;
+            _watch?.Cancel(); _watch?.Dispose(); _watch = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+            _watching = true;
             try
             {
-                await session.WatchMessagesAsync(watch.Token);
+                await _session.WatchMessagesAsync(_watch.Token);
             }
             finally
             {
-                watching = false;
+                _watching = false;
             }
         }, true);
-        AddButton(inboxActions, "StopWatching", ExampleResources.StopWatching, () => { watch?.Cancel(); return Task.CompletedTask; });
-        dataView.Children.Add(ExampleLayout.Group(LayoutResources.ConnectionGroup, toolbar));
-        dataView.Children.Add(ExampleLayout.Group(ExampleResources.Data, ExampleLayout.Stack(
-            ExampleLayout.Field(ExampleResources.Recipient, receiver),
-            ExampleLayout.Field(LayoutResources.PayloadLabel, text), sendActions)));
-        communicationView.Children.Add(ExampleLayout.Group(LayoutResources.InboxGroup, inboxActions));
-        dataView.Children.Add(ExampleLayout.Group(ExampleResources.ReceivedData, received));
+        AddButton(inboxActions, "StopWatching", ExampleResources.StopWatching, () => { _watch?.Cancel(); return Task.CompletedTask; });
+        _dataView.Children.Add(ExampleLayout.Group(LayoutResources.ConnectionGroup, toolbar));
+        _dataView.Children.Add(ExampleLayout.Group(ExampleResources.Data, ExampleLayout.Stack(
+            ExampleLayout.Field(ExampleResources.Recipient, _receiver),
+            ExampleLayout.Field(LayoutResources.PayloadLabel, _text), sendActions)));
+        _communicationView.Children.Add(ExampleLayout.Group(LayoutResources.InboxGroup, inboxActions));
+        _dataView.Children.Add(ExampleLayout.Group(ExampleResources.ReceivedData, _received));
         var activityActions = ExampleLayout.Row();
-        AddButton(activityActions, "ClearActivity", ExampleResources.Clear, () => { session.ClearActivity(); return Task.CompletedTask; });
-        activityView.Children.Add(activityActions);
-        activityView.Children.Add(ExampleLayout.Group(ExampleResources.ActivityLog, log));
-        communicationView.Children.Add(new Label { Text = ExampleResources.CommunicationInformation });
-        body.Children.Add(dataView);
-        body.Children.Add(communicationView);
-        body.Children.Add(activityView);
-        body.Children.Add(error);
-        Content = ExampleLayout.WithStatus(body, mediaStatus);
+        AddButton(activityActions, "ClearActivity", ExampleResources.Clear, () => { _session.ClearActivity(); return Task.CompletedTask; });
+        _activityView.Children.Add(activityActions);
+        _activityView.Children.Add(ExampleLayout.Group(ExampleResources.ActivityLog, _log));
+        _communicationView.Children.Add(new Label { Text = ExampleResources.CommunicationInformation });
+        body.Children.Add(_dataView);
+        body.Children.Add(_communicationView);
+        body.Children.Add(_activityView);
+        body.Children.Add(_error);
+        Content = ExampleLayout.WithStatus(body, _mediaStatus);
         CreateMenu();
-        uiDispatcher = Dispatcher;
-        mediaPhase = (int)(session.Media.IsOpen ? Gurux.Common.MediaState.Open : Gurux.Common.MediaState.Closed);
-        session.Media.OnMediaStateChange += MediaStateChanged;
-        timer = Dispatcher.CreateTimer(); timer.Interval = TimeSpan.FromMilliseconds(200);
-        timer.Tick += (_, _) => Refresh(); timer.Start(); Refresh();
-        preferencesLoading = RestorePreferencesAsync();
+        _uiDispatcher = Dispatcher;
+        _mediaPhase = (int)(_session.Media.IsOpen ? Gurux.Common.MediaState.Open : Gurux.Common.MediaState.Closed);
+        _session.Media.OnMediaStateChange += MediaStateChanged;
+        _timer = Dispatcher.CreateTimer(); _timer.Interval = TimeSpan.FromMilliseconds(200);
+        _timer.Tick += (_, _) => Refresh(); _timer.Start(); Refresh();
+        _preferencesLoading = RestorePreferencesAsync();
 
     }
 
@@ -186,9 +186,9 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     private async Task OpenAsync()
     {
 #if ANDROID
-        if (session.Media.UsesNativeSms) { await SmsPermissions.EnsureAsync(session.Media.Mode); }
+        if (_session.Media.UsesNativeSms) { await SmsPermissions.EnsureAsync(_session.Media.Mode); }
 #endif
-        await session.OpenAsync(lifetime.Token);
+        await _session.OpenAsync(_lifetime.Token);
     }
 
     /// <summary>Adds an action whose errors and cancellation are shown in the view.</summary>
@@ -204,10 +204,10 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
         button.Margin = new Thickness(0, 0, 8, 8);
         button.Clicked += async (_, _) => await RunAsync(action);
         parent?.Children.Add(button);
-        actionButtons[name] = button;
-        if (name == "Close") { closeButton = button; }
-        if (name == "StopWatching") { stopWatchingButton = button; }
-        if (unsafeAction) { unsafeButtons.Add(button); }
+        _actionButtons[name] = button;
+        if (name == "Close") { _closeButton = button; }
+        if (name == "StopWatching") { _stopWatchingButton = button; }
+        if (unsafeAction) { _unsafeButtons.Add(button); }
     }
 
     /// <summary>Displays asynchronous action errors and refreshes operation availability.</summary>
@@ -217,13 +217,13 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     {
         try
         {
-            error.Text = "";
+            _error.Text = "";
             Task operation = action();
             Refresh();
             await operation;
         }
-        catch (OperationCanceledException) { error.Text = ExampleResources.Canceled; }
-        catch (Exception ex) { error.Text = ex.Message; }
+        catch (OperationCanceledException) { _error.Text = ExampleResources.Canceled; }
+        catch (Exception ex) { _error.Text = ex.Message; }
         finally { Refresh(); }
     }
 
@@ -232,58 +232,58 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     /// <param name="args">The reported lifecycle phase or settings-change notification.</param>
     private void MediaStateChanged(object? sender, Gurux.Common.MediaStateEventArgs args)
     {
-        if (System.Threading.Volatile.Read(ref shuttingDown) != 0) { return; }
+        if (System.Threading.Volatile.Read(ref _shuttingDown) != 0) { return; }
         if (args.State != Gurux.Common.MediaState.Changed)
         {
-            System.Threading.Volatile.Write(ref mediaPhase, (int)args.State);
+            System.Threading.Volatile.Write(ref _mediaPhase, (int)args.State);
         }
-        if (uiDispatcher.IsDispatchRequired) { uiDispatcher.Dispatch(Refresh); }
+        if (_uiDispatcher.IsDispatchRequired) { _uiDispatcher.Dispatch(Refresh); }
         else { Refresh(); }
     }
     /// <summary>Polls selected port availability and copies modem state and activity to controls on the UI thread.</summary>
     private void Refresh()
     {
-        if (System.Threading.Volatile.Read(ref shuttingDown) != 0)
+        if (System.Threading.Volatile.Read(ref _shuttingDown) != 0)
         {
-            foreach (var button in unsafeButtons) { button.IsEnabled = false; }
-            if (closeButton is not null) { closeButton.IsEnabled = false; }
-            if (stopWatchingButton is not null) { stopWatchingButton.IsEnabled = false; }
+            foreach (var button in _unsafeButtons) { button.IsEnabled = false; }
+            if (_closeButton is not null) { _closeButton.IsEnabled = false; }
+            if (_stopWatchingButton is not null) { _stopWatchingButton.IsEnabled = false; }
             RefreshMenus();
             return;
         }
-        var phase = (Gurux.Common.MediaState)System.Threading.Volatile.Read(ref mediaPhase);
+        var phase = (Gurux.Common.MediaState)System.Threading.Volatile.Read(ref _mediaPhase);
         bool closed = phase == Gurux.Common.MediaState.Closed;
-        bool busy = session.IsBusy;
+        bool busy = _session.IsBusy;
         bool open = phase == Gurux.Common.MediaState.Open;
-        if (!session.Media.UsesNativeSms && !lifetime.IsCancellationRequested && !open && !busy)
+        if (!_session.Media.UsesNativeSms && !_lifetime.IsCancellationRequested && !open && !busy)
         {
-            _ = portAvailability.RefreshAsync(session.Media.PortName, lifetime.Token);
+            _ = _portAvailability.RefreshAsync(_session.Media.PortName, _lifetime.Token);
         }
-        ExampleLayout.Status(state, busy, open);
-        if (closeButton is not null) { closeButton.IsEnabled = CanNavigate && open; }
-        if (stopWatchingButton is not null)
+        ExampleLayout.Status(_state, busy, open);
+        if (_closeButton is not null) { _closeButton.IsEnabled = CanNavigate && open; }
+        if (_stopWatchingButton is not null)
         {
-            stopWatchingButton.IsEnabled = watching && watch is { IsCancellationRequested: false };
+            _stopWatchingButton.IsEnabled = _watching && _watch is { IsCancellationRequested: false };
         }
-        foreach (var button in unsafeButtons)
+        foreach (var button in _unsafeButtons)
         {
-            button.IsEnabled = CanNavigate && (!OperatingSystem.IsIOS() || session.Media.PortName?.StartsWith("ble:", StringComparison.OrdinalIgnoreCase) == true || button.AutomationId is "Settings" or "RightSettings") && !busy && (button.AutomationId is "Settings" or "Open" ? closed : open)
-                && (button.AutomationId != "Open" || (!lifetime.IsCancellationRequested && (session.Media.UsesNativeSms || portAvailability.IsAvailable)))
-                && (button.AutomationId != "Send" || session.Media.Mode != SmsMode.ReceiveOnly)
-                && (button.AutomationId is not ("ListMessages" or "WatchMessages") || session.Media.Mode != SmsMode.SendOnly);
+            button.IsEnabled = CanNavigate && (!OperatingSystem.IsIOS() || _session.Media.PortName?.StartsWith("ble:", StringComparison.OrdinalIgnoreCase) == true || button.AutomationId is "Settings" or "RightSettings") && !busy && (button.AutomationId is "Settings" or "Open" ? closed : open)
+                && (button.AutomationId != "Open" || (!_lifetime.IsCancellationRequested && (_session.Media.UsesNativeSms || _portAvailability.IsAvailable)))
+                && (button.AutomationId != "Send" || _session.Media.Mode != SmsMode.ReceiveOnly)
+                && (button.AutomationId is not ("ListMessages" or "WatchMessages") || _session.Media.Mode != SmsMode.SendOnly);
         }
         RefreshMenus();
-        string receivedSnapshot = session.ReceivedData(false);
-        if (received.Text != receivedSnapshot) { received.Text = receivedSnapshot; }
-        string snapshot = string.Join(Environment.NewLine, session.Log);
-        if (log.Text != snapshot) { log.Text = snapshot; }
+        string receivedSnapshot = _session.ReceivedData(false);
+        if (_received.Text != receivedSnapshot) { _received.Text = receivedSnapshot; }
+        string snapshot = string.Join(Environment.NewLine, _session.Log);
+        if (_log.Text != snapshot) { _log.Text = snapshot; }
         _ = SavePreferencesAsync();
-        mediaStatus.Text = session.Media.UsesNativeSms
+        _mediaStatus.Text = _session.Media.UsesNativeSms
             ? string.Format(CultureInfo.CurrentCulture, StatusResources.StatusNativeSms,
-                session.Media.IsOpen ? StatusResources.StatusOpen : StatusResources.StatusClosed)
+                _session.Media.IsOpen ? StatusResources.StatusOpen : StatusResources.StatusClosed)
             : string.Format(CultureInfo.CurrentCulture, StatusResources.StatusSerial,
-                session.Media.IsOpen ? StatusResources.StatusOpen : StatusResources.StatusClosed,
-                string.IsNullOrWhiteSpace(session.Media.PortName) ? StatusResources.StatusNotConfigured : session.Media.PortName);
+                _session.Media.IsOpen ? StatusResources.StatusOpen : StatusResources.StatusClosed,
+                string.IsNullOrWhiteSpace(_session.Media.PortName) ? StatusResources.StatusNotConfigured : _session.Media.PortName);
 
     }
 
@@ -292,26 +292,26 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     public async Task ShutdownAsync()
     {
         try { await DisposeAsync(); }
-        catch (Exception ex) { error.Text = ex.Message; }
+        catch (Exception ex) { _error.Text = ex.Message; }
     }
 
     /// <summary>Stops UI polling and disposes the modem once.</summary>
     /// <returns>The shared asynchronous disposal operation.</returns>
-    public ValueTask DisposeAsync() => new(disposal ??= DisposeCoreAsync());
+    public ValueTask DisposeAsync() => new(_disposal ??= DisposeCoreAsync());
 
     /// <summary>Cancels view operations and releases the owned modem resources.</summary>
     /// <returns>A task completing after all owned resources are released.</returns>
     private async Task DisposeCoreAsync()
     {
-        System.Threading.Interlocked.Exchange(ref shuttingDown, 1);
-        if (uiDispatcher.IsDispatchRequired) { uiDispatcher.Dispatch(Refresh); }
+        System.Threading.Interlocked.Exchange(ref _shuttingDown, 1);
+        if (_uiDispatcher.IsDispatchRequired) { _uiDispatcher.Dispatch(Refresh); }
         else { Refresh(); }
-        session.Media.OnMediaStateChange -= MediaStateChanged;
-        timer.Stop(); lifetime.Cancel(); watch?.Cancel();
-        await preferencesLoading;
+        _session.Media.OnMediaStateChange -= MediaStateChanged;
+        _timer.Stop(); _lifetime.Cancel(); _watch?.Cancel();
+        await _preferencesLoading;
         await SavePreferencesAsync();
-        await session.DisposeAsync();
-        watch?.Dispose(); lifetime.Dispose();
+        await _session.DisposeAsync();
+        _watch?.Dispose(); _lifetime.Dispose();
     }
     /// <summary>Captures media configuration and outgoing controls without opening a connection.</summary>
     /// <returns>A detached JSON object containing this view's persistent preferences.</returns>
@@ -319,9 +319,9 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     {
         var values = new JsonObject
         {
-            ["Media"] = JsonNode.Parse(session.Media.JsonSettings ?? "{}"),
-            ["SendText"] = text.Text ?? "",
-            ["Recipient"] = receiver.Text ?? ""
+            ["Media"] = JsonNode.Parse(_session.Media.JsonSettings ?? "{}"),
+            ["SendText"] = _text.Text ?? "",
+            ["Recipient"] = _receiver.Text ?? ""
         };
         (values["Media"] as JsonObject)?.Remove("PIN");
         return values;
@@ -331,9 +331,9 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     /// <param name="values">The saved preferences; missing entries retain their current defaults.</param>
     private void ApplyPreferences(JsonObject values)
     {
-        if (values["Media"] is JsonObject media) { session.Media.JsonSettings = media.ToJsonString(); }
-        text.Text = values["SendText"]?.GetValue<string>() ?? text.Text;
-        receiver.Text = values["Recipient"]?.GetValue<string>() ?? receiver.Text;
+        if (values["Media"] is JsonObject media) { _session.Media.JsonSettings = media.ToJsonString(); }
+        _text.Text = values["SendText"]?.GetValue<string>() ?? _text.Text;
+        _receiver.Text = values["Recipient"]?.GetValue<string>() ?? _receiver.Text;
     }
 
     /// <summary>Restores preferences asynchronously before enabling interaction and keeps defaults if loading fails.</summary>
@@ -344,18 +344,18 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
         JsonObject defaults = CapturePreferences();
         try
         {
-            JsonObject? values = await preferences.LoadAsync();
-            if (System.Threading.Volatile.Read(ref shuttingDown) != 0) { return; }
+            JsonObject? values = await _preferences.LoadAsync();
+            if (System.Threading.Volatile.Read(ref _shuttingDown) != 0) { return; }
             if (values is not null) { ApplyPreferences(values); }
         }
         catch (Exception ex)
         {
-            if (System.Threading.Volatile.Read(ref shuttingDown) != 0) { return; }
+            if (System.Threading.Volatile.Read(ref _shuttingDown) != 0) { return; }
             ApplyPreferences(defaults);
-            error.Text = ex.Message;
+            _error.Text = ex.Message;
         }
-        preferencesSnapshot = CapturePreferences().ToJsonString();
-        preferencesReady = true;
+        _preferencesSnapshot = CapturePreferences().ToJsonString();
+        _preferencesReady = true;
         IsEnabled = true;
         Refresh();
     }
@@ -364,40 +364,40 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     /// <returns>A task completing after the current snapshot has been saved or skipped.</returns>
     private async Task SavePreferencesAsync()
     {
-        if (uiDispatcher.IsDispatchRequired)
+        if (_uiDispatcher.IsDispatchRequired)
         {
             await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(SavePreferencesAsync);
             return;
         }
-        if (!preferencesReady) { return; }
+        if (!_preferencesReady) { return; }
         string? snapshot = null;
         try
         {
             JsonObject values = CapturePreferences();
             snapshot = values.ToJsonString();
-            if (snapshot == preferencesSnapshot) { await preferencesSaving; return; }
-            preferencesSnapshot = snapshot;
-            preferencesSaving = preferences.SaveAsync(values);
-            await preferencesSaving;
+            if (snapshot == _preferencesSnapshot) { await _preferencesSaving; return; }
+            _preferencesSnapshot = snapshot;
+            _preferencesSaving = _preferences.SaveAsync(values);
+            await _preferencesSaving;
         }
         catch (Exception ex)
         {
-            if (preferencesSnapshot == snapshot) { preferencesSnapshot = null; }
-            error.Text = ex.Message;
+            if (_preferencesSnapshot == snapshot) { _preferencesSnapshot = null; }
+            _error.Text = ex.Message;
         }
     }
 
 
     /// <summary>Gets whether navigation can change this page's persistent sections.</summary>
-    private bool CanNavigate => preferencesReady && !settingsShowing && !navigationShowing && System.Threading.Volatile.Read(ref shuttingDown) == 0;
+    private bool CanNavigate => _preferencesReady && !_settingsShowing && !_navigationShowing && System.Threading.Volatile.Read(ref _shuttingDown) == 0;
     /// <summary>Shows one retained section and updates the mobile navigation title without recreating controls.</summary>
     /// <param name="section">The existing section to display.</param>
     private void ShowSection(VerticalStackLayout section)
     {
         if (!CanNavigate) { return; }
-        dataView.IsVisible = ReferenceEquals(section, dataView);
-        communicationView.IsVisible = ReferenceEquals(section, communicationView);
-        activityView.IsVisible = ReferenceEquals(section, activityView);
+        _dataView.IsVisible = ReferenceEquals(section, _dataView);
+        _communicationView.IsVisible = ReferenceEquals(section, _communicationView);
+        _activityView.IsVisible = ReferenceEquals(section, _activityView);
         if (!OperatingSystem.IsWindows())
         {
             Title = ExampleResources.Title;
@@ -407,11 +407,11 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     /// <returns>A task completing when the editor releases the view.</returns>
     private async Task EditMediaSettingsAsync()
     {
-        if (!CanNavigate || session.IsBusy || session.Media.IsOpen || (Gurux.Common.MediaState)System.Threading.Volatile.Read(ref mediaPhase) != Gurux.Common.MediaState.Closed) { return; }
-        settingsShowing = true;
+        if (!CanNavigate || _session.IsBusy || _session.Media.IsOpen || (Gurux.Common.MediaState)System.Threading.Volatile.Read(ref _mediaPhase) != Gurux.Common.MediaState.Closed) { return; }
+        _settingsShowing = true;
         Refresh();
-        try { await new MauiMediaSettingsEditor(this).ShowAsync(session.Media, cancellationToken: lifetime.Token); }
-        finally { settingsShowing = false; Refresh(); }
+        try { await new MauiMediaSettingsEditor(this).ShowAsync(_session.Media, cancellationToken: _lifetime.Token); }
+        finally { _settingsShowing = false; Refresh(); }
     }
 
     /// <summary>Creates Windows menu groups or a native mobile navigation toolbar action.</summary>
@@ -423,18 +423,18 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
             connection.Add(ActionMenu("OpenMenu", "Open", ExampleResources.Open));
             connection.Add(ActionMenu("CloseMenu", "Close", ExampleResources.Close));
             var view = new MenuBarItem { Text = ExampleResources.ViewMenu };
-            view.Add(ViewMenu("DataNavigation", ExampleResources.Data, dataView));
-            view.Add(ViewMenu("ActivityNavigation", ExampleResources.ActivityLog, activityView));
+            view.Add(ViewMenu("DataNavigation", ExampleResources.Data, _dataView));
+            view.Add(ViewMenu("ActivityNavigation", ExampleResources.ActivityLog, _activityView));
             var settings = new MenuBarItem { Text = ExampleResources.Settings };
             settings.Add(ActionMenu("Settings", "Settings", ExampleResources.MediaSettings));
-            settings.Add(ViewMenu("CommunicationNavigation", ExampleResources.CommunicationSettings, communicationView));
+            settings.Add(ViewMenu("CommunicationNavigation", ExampleResources.CommunicationSettings, _communicationView));
             MenuBarItems.Add(connection); MenuBarItems.Add(view); MenuBarItems.Add(settings);
         }
         else
         {
             Title = ExampleResources.Title;
             var command = new Command(async () => await RunAsync(ShowMobileMenuAsync), () => CanNavigate);
-            menuCommands.Add(command);
+            _menuCommands.Add(command);
             var navigation = new ToolbarItem { AutomationId = "NavigationMenu", Text = ExampleResources.Menu, Command = command };
             if (OperatingSystem.IsAndroid())
             {
@@ -455,8 +455,8 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     /// <returns>The native menu item.</returns>
     private MenuFlyoutItem ActionMenu(string name, string action, string caption)
     {
-        var command = new Command(() => { if (CanNavigate && actionButtons[action].IsEnabled) { actionButtons[action].SendClicked(); } }, () => CanNavigate && actionButtons[action].IsEnabled);
-        menuCommands.Add(command);
+        var command = new Command(() => { if (CanNavigate && _actionButtons[action].IsEnabled) { _actionButtons[action].SendClicked(); } }, () => CanNavigate && _actionButtons[action].IsEnabled);
+        _menuCommands.Add(command);
         return new MenuFlyoutItem { AutomationId = name, Text = caption, Command = command };
     }
     /// <summary>Creates navigation to a retained content section.</summary>
@@ -467,7 +467,7 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     private MenuFlyoutItem ViewMenu(string name, string caption, VerticalStackLayout section)
     {
         var command = new Command(() => ShowSection(section), () => CanNavigate);
-        menuCommands.Add(command);
+        _menuCommands.Add(command);
         return new MenuFlyoutItem { AutomationId = name, Text = caption, Command = command };
     }
     /// <summary>Shows a platform action sheet and ignores results after shutdown starts.</summary>
@@ -475,21 +475,21 @@ public sealed class MediaExamplePage : ContentPage, IAsyncDisposable
     private async Task ShowMobileMenuAsync()
     {
         if (!CanNavigate) { return; }
-        navigationShowing = true;
+        _navigationShowing = true;
         RefreshMenus();
         string? selected;
         try { selected = await DisplayActionSheetAsync(ExampleResources.Menu, ExampleResources.Cancel, null, ExampleResources.Data, ExampleResources.MediaSettings, ExampleResources.CommunicationSettings, ExampleResources.ActivityLog); }
-        finally { navigationShowing = false; RefreshMenus(); }
+        finally { _navigationShowing = false; RefreshMenus(); }
         if (!CanNavigate) { return; }
-        if (selected == ExampleResources.Data) { ShowSection(dataView); }
-        else if (selected == ExampleResources.CommunicationSettings) { ShowSection(communicationView); }
-        else if (selected == ExampleResources.ActivityLog) { ShowSection(activityView); }
+        if (selected == ExampleResources.Data) { ShowSection(_dataView); }
+        else if (selected == ExampleResources.CommunicationSettings) { ShowSection(_communicationView); }
+        else if (selected == ExampleResources.ActivityLog) { ShowSection(_activityView); }
         else if (selected == ExampleResources.MediaSettings) { await EditMediaSettingsAsync(); }
     }
     /// <summary>Refreshes availability of every native menu command.</summary>
     private void RefreshMenus()
     {
-        foreach (var command in menuCommands) { command.ChangeCanExecute(); }
+        foreach (var command in _menuCommands) { command.ChangeCanExecute(); }
     }
 
 }

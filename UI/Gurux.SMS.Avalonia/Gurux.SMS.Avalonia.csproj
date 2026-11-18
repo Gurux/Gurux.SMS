@@ -18,8 +18,8 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageIcon>GXSMS.png</PackageIcon>
-    <GuruxCommonVersion Condition="'$(GuruxCommonVersion)' == ''">9.0.2611.1601</GuruxCommonVersion>
-    <GuruxSerialAvaloniaVersion Condition="'$(GuruxSerialAvaloniaVersion)' == ''">[9.0.0,9.1.0)</GuruxSerialAvaloniaVersion>
+    <GuruxCommonVersion Condition="'$(GuruxCommonVersion)' == ''">9.0.2611.1802</GuruxCommonVersion>
+    <GuruxSerialAvaloniaVersion Condition="'$(GuruxSerialAvaloniaVersion)' == ''">9.0.2611.1803</GuruxSerialAvaloniaVersion>
   </PropertyGroup>
   <ItemGroup Condition="'$(UsePublishedGuruxPackages)' == 'true'">
     <PackageReference Include="Gurux.Serial.Avalonia" Version="$(GuruxSerialAvaloniaVersion)" />
@@ -31,6 +31,6 @@
     <EmbeddedResource Remove="Tests/**;tests/**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Gurux.Common" Version="9.0.2611.1601" />
+    <PackageReference Include="Gurux.Common" Version="$(GuruxCommonVersion)" />
   </ItemGroup>
 </Project>

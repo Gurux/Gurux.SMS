@@ -9,7 +9,7 @@
   <ItemGroup>
     <Compile Remove="Tests/**/*.cs" />
     <None Include="README.md" Pack="true" PackagePath="/" />
-    <PackageReference Include="Gurux.UI.Components" Version="4.0.2611.1301" />
+    <PackageReference Include="Gurux.UI.Components" Version="4.0.2611.1801" />
     <ProjectReference Include="../../Development/Gurux.SMS.csproj" />
 
     <ProjectReference Include="../../../Gurux.Serial/UI/Gurux.Serial.Blazor/Gurux.Serial.Blazor.csproj" Condition="'$(UsePublishedGuruxPackages)' != 'true'" />
@@ -20,8 +20,8 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageIcon>GXSMS.png</PackageIcon>
-    <GuruxCommonVersion Condition="'$(GuruxCommonVersion)' == ''">9.0.2611.1601</GuruxCommonVersion>
-    <GuruxSerialBlazorVersion Condition="'$(GuruxSerialBlazorVersion)' == ''">[9.0.0,9.1.0)</GuruxSerialBlazorVersion>
+    <GuruxCommonVersion Condition="'$(GuruxCommonVersion)' == ''">9.0.2611.1802</GuruxCommonVersion>
+    <GuruxSerialBlazorVersion Condition="'$(GuruxSerialBlazorVersion)' == ''">9.0.2611.1803</GuruxSerialBlazorVersion>
   </PropertyGroup>
   <ItemGroup Condition="'$(UsePublishedGuruxPackages)' == 'true'">
     <PackageReference Include="Gurux.Serial.Blazor" Version="$(GuruxSerialBlazorVersion)" />
